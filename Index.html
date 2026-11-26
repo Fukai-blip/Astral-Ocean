@@ -326,32 +326,38 @@
             <select id="newPlanetStar" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-400"></select>
           </div>
           <div>
-            <label class="block text-[11px] text-slate-400 mb-1">ファイル種別</label>
+            <label class="block text-[11px] text-slate-400 mb-1">惑星タイプ</label>
             <select id="newPlanetType" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-400">
-              <option value="document">文書（document）</option>
-              <option value="image">画像（image）</option>
+              <option value="document">ドキュメント (.md / .txt)</option>
+              <option value="image">画像ファイル (.png / .jpg)</option>
             </select>
           </div>
         </div>
         <div>
-          <div class="flex items-center justify-between text-[11px] mb-1"><span class="text-slate-400">惑星サイズ（重要度）</span><span id="newPlanetRadiusValue" class="font-mono text-sky-300">3.8</span></div>
+          <div class="flex justify-between text-[11px] mb-1">
+            <span class="text-slate-400">惑星サイズ</span>
+            <span id="newPlanetRadiusValue" class="font-mono text-sky-300">3.8</span>
+          </div>
           <input id="newPlanetRadius" type="range" min="1.5" max="10.0" step="0.1" value="3.8" class="w-full accent-sky-400">
         </div>
         <div>
-          <div class="flex items-center justify-between text-[11px] mb-1"><span class="text-slate-400">初期軌道半径（軌道幅）</span><span id="newPlanetOrbitValue" class="font-mono text-sky-300">44</span></div>
+          <div class="flex justify-between text-[11px] mb-1">
+            <span class="text-slate-400">公転軌道半径</span>
+            <span id="newPlanetOrbitValue" class="font-mono text-sky-300">44</span>
+          </div>
           <input id="newPlanetOrbit" type="range" min="12" max="240" step="1" value="44" class="w-full accent-sky-400">
         </div>
         <div id="newPlanetImageSection" class="hidden space-y-2 rounded-xl bg-slate-950/70 border border-slate-800 p-3">
-          <label class="block text-[11px] text-pink-300 font-medium">画像ソース（URL または端末ファイル・任意）</label>
-          <input id="newPlanetImageUrl" type="text" placeholder="https://... または空欄でサンプル画像生成" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-[11px] text-slate-100 focus:outline-none focus:border-pink-400">
-          <div class="flex items-center gap-2">
-            <input id="newPlanetImageFile" type="file" accept="image/*" class="hidden">
-            <button id="btnPickNewPlanetImageFile" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 text-[11px] text-slate-200 transition">ファイルを選択</button>
+          <label class="block text-[11px] text-slate-400">画像URLまたは端末ファイル（任意）</label>
+          <input id="newPlanetImageUrl" type="url" placeholder="https://... （未指定時はサンプル画像を自動生成）" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-400">
+          <div class="flex items-center justify-between gap-2">
+            <button id="btnPickNewPlanetImageFile" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 text-[11px] text-slate-200 transition">端末から画像を選択</button>
             <span id="newPlanetImageFileName" class="text-[10px] text-slate-400 truncate">未選択</span>
+            <input id="newPlanetImageFile" type="file" accept="image/*" class="hidden">
           </div>
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-          <button type="button" id="btnCancelNewPlanet" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-4 py-2 text-slate-300 transition">キャンセル</button>
+          <button id="btnCancelNewPlanet" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-3.5 py-2 text-slate-300 transition">キャンセル</button>
           <button type="submit" class="rounded-xl bg-sky-500 hover:bg-sky-400 px-4 py-2 font-semibold text-slate-950 transition">軌道に配置</button>
         </div>
       </form>
@@ -366,36 +372,33 @@
           <i class="ph ph-image text-pink-400 text-lg shrink-0"></i>
           <div class="min-w-0">
             <div id="imageViewerTitle" class="text-sm font-bold text-slate-100 truncate">画像ビューア</div>
-            <div id="imageViewerSubtitle" class="text-[11px] text-slate-400 truncate">惑星イメージ表示</div>
+            <div id="imageViewerSubtitle" class="text-[11px] text-slate-400 truncate">所属恒星: 太陽（Sol）</div>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-1.5">
-          <button id="btnViewerZoomOut" type="button" title="縮小" class="rounded-lg bg-slate-800 hover:bg-slate-700 p-1.5 text-slate-200"><i class="ph ph-magnifying-glass-minus text-sm"></i></button>
-          <span id="imageViewerZoomLabel" class="w-12 text-center font-mono text-[11px] text-pink-300">100%</span>
-          <button id="btnViewerZoomIn" type="button" title="拡大" class="rounded-lg bg-slate-800 hover:bg-slate-700 p-1.5 text-slate-200"><i class="ph ph-magnifying-glass-plus text-sm"></i></button>
-          <button id="btnViewerFit" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-[11px] text-slate-200">全体表示</button>
-          <button id="btnViewerReset" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1 text-[11px] text-slate-200">リセット</button>
-          <button id="btnViewerRotate" type="button" title="90度回転" class="rounded-lg bg-slate-800 hover:bg-slate-700 p-1.5 text-slate-200"><i class="ph ph-arrow-clockwise text-sm"></i></button>
-          <button id="btnCloseImageViewer" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 px-3 py-1.5 font-medium text-slate-200">閉じる</button>
+          <button id="btnViewerZoomOut" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">-</button>
+          <span id="imageViewerZoomLabel" class="font-mono text-[11px] text-pink-300 w-12 text-center">100%</span>
+          <button id="btnViewerZoomIn" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">+</button>
+          <button id="btnViewerFit" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">Fit</button>
+          <button id="btnViewerReset" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">Reset</button>
+          <button id="btnViewerRotate" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">90°回転</button>
+          <button id="btnCloseImageViewer" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1 font-semibold text-slate-100">閉じる</button>
         </div>
       </div>
-      <div class="flex-1 flex flex-col lg:flex-row min-h-0">
-        <div id="imageViewerCanvasArea" class="checker-bg flex-1 relative overflow-hidden flex items-center justify-center p-4 bg-slate-950/75">
-          <img id="imageViewerImg" alt="惑星プレビュー画像" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-150 select-none">
-          <div id="imageViewerError" class="hidden rounded-xl bg-rose-950/70 border border-rose-500/40 px-4 py-3 text-rose-200 text-xs">画像を読み込めませんでした。URLまたはファイルを確認してください。</div>
+      <div class="flex-1 checker-bg flex items-center justify-center overflow-hidden p-4 relative">
+        <img id="imageViewerImg" alt="惑星プレビュー画像" class="max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-transform duration-150 select-none">
+        <div id="imageViewerError" class="hidden rounded-xl bg-rose-950/90 border border-rose-500/50 px-4 py-3 text-rose-200 text-xs">
+          画像を読み込めませんでした。URLまたは端末画像を変更してください。
         </div>
-        <div class="w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/95 p-4 space-y-3.5 overflow-y-auto">
-          <div class="text-[11px] font-semibold text-slate-200">画像データの変更</div>
-          <div>
-            <label class="block text-[10px] text-slate-400 mb-1">画像URL または Data URL</label>
-            <input id="imageViewerUrlInput" type="text" placeholder="https://... または data:image/..." class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-[11px] text-slate-100 focus:outline-none focus:border-pink-400">
-            <button id="btnApplyViewerUrl" type="button" class="mt-1.5 w-full rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/40 py-1.5 text-[11px] font-medium text-pink-200 transition">URLを適用して保存</button>
-          </div>
-          <div>
-            <label class="block text-[10px] text-slate-400 mb-1">ローカル画像ファイルをアップロード</label>
-            <input id="imageViewerFileInput" type="file" accept="image/*" class="hidden">
-            <button id="btnUploadViewerFile" type="button" class="w-full flex items-center justify-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 py-2 text-[11px] font-medium text-slate-200 transition"><i class="ph ph-upload-simple text-sm text-pink-400"></i><span>端末から画像を選ぶ</span></button>
-          </div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-slate-800 bg-slate-950/70">
+        <div class="flex items-center gap-2 flex-1 min-w-[220px]">
+          <input id="imageViewerUrlInput" type="url" placeholder="画像URLを入力..." class="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-pink-400">
+          <button id="btnApplyViewerUrl" type="button" class="rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/40 px-3 py-1.5 font-medium text-pink-200">URL反映</button>
+        </div>
+        <div>
+          <button id="btnUploadViewerFile" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 text-slate-200">端末から変更</button>
+          <input id="imageViewerFileInput" type="file" accept="image/*" class="hidden">
         </div>
       </div>
     </div>
@@ -409,22 +412,33 @@
         <button id="btnCloseSyncModal" type="button" class="rounded-lg p-1 text-slate-400 hover:text-white hover:bg-slate-800"><i class="ph ph-x text-sm"></i></button>
       </div>
       <div class="space-y-3">
-        <div class="rounded-xl bg-slate-950/85 border border-indigo-500/30 p-3 space-y-2">
-          <div class="flex items-center justify-between">
+        <div class="rounded-xl bg-slate-950/85 border border-indigo-500/30 p-3 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
             <span class="text-[11px] font-semibold text-indigo-200 flex items-center gap-1.5">
               <i class="ph ph-key text-amber-300 text-sm"></i>
-              <span>招待コード認証</span>
+              <span>招待コード認証コントロール</span>
             </span>
             <span id="inviteAuthBadge" class="rounded-full px-2 py-0.5 text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">認証済み</span>
           </div>
-          <div class="flex items-center gap-2">
-            <input id="inviteCodeInput" type="password" autocomplete="off" placeholder="招待コードを入力 (例: ASTRAL-INVITE-2026)" class="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-400">
-            <button id="btnVerifyInviteCode" type="button" class="rounded-xl bg-indigo-500 hover:bg-indigo-400 px-3 py-1.5 font-semibold text-white transition shrink-0">認証</button>
-            <button id="btnUnlockInvite" type="button" class="rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 px-2.5 py-1.5 font-medium text-emerald-200 transition shrink-0">再認証</button>
+          <div class="flex items-center gap-1.5">
+            <input id="inviteCodeInput" type="password" autocomplete="off" placeholder="招待コードを入力 (例: ASTRAL-INVITE-2026)" class="flex-1 min-w-0 rounded-xl bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-400">
+            <button id="btnToggleInviteVisibility" type="button" title="招待コードの表示切替" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-1.5 text-slate-300 transition shrink-0">
+              <i id="inviteVisibilityIcon" class="ph ph-eye text-sm"></i>
+            </button>
+            <button id="btnVerifyInviteCode" type="button" class="rounded-xl bg-indigo-500 hover:bg-indigo-400 px-2.5 py-1.5 font-semibold text-white transition shrink-0">認証</button>
+            <button id="btnUpdateCustomInviteCode" type="button" title="入力した文字列をカスタム招待コード（SHA-256）として設定" class="rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 px-2.5 py-1.5 font-semibold text-amber-200 transition shrink-0">コード設定</button>
           </div>
-          <div class="flex items-center justify-between text-[10px] text-slate-400">
+          <div class="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
             <span id="inviteAuthStatusText">テスト用コード: ASTRAL-INVITE-2026（初期認証済み）</span>
-            <button id="btnModalLockInvite" type="button" class="text-amber-300 hover:underline">ロックする</button>
+            <div class="flex items-center gap-2">
+              <button id="btnFillDefaultInvite" type="button" class="text-sky-300 hover:underline">既定コード入力</button>
+              <button id="btnResetInviteAuth" type="button" class="text-rose-300 hover:underline">初期コードに戻す</button>
+              <button id="btnModalLockInvite" type="button" class="text-amber-300 hover:underline">ロック</button>
+            </div>
+          </div>
+          <div class="rounded-lg bg-slate-900/90 border border-slate-800/90 px-2.5 py-1.5 text-[10px] text-slate-400 flex flex-wrap items-center justify-between gap-1">
+            <span>リモート同期ゲート:</span>
+            <span id="syncGatePolicyText" class="font-mono text-emerald-300">許可（認証済み・未認証時は通信遮断）</span>
           </div>
         </div>
         <div><label class="block text-[11px] text-slate-400 mb-1">Supabase Project URL</label><input id="syncSupabaseUrl" type="url" placeholder="https://zdyegofffljtpplbfbpr.supabase.co" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-400"></div>
@@ -433,8 +447,15 @@
           <div><label class="block text-[11px] text-slate-400 mb-1">テーブル名</label><input id="syncTableName" type="text" value="astral_ocean_rooms" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-400"></div>
           <div><label class="block text-[11px] text-slate-400 mb-1">ワークスペース / ルームID</label><input id="syncRoomId" type="text" value="astral-main-room" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-400"></div>
         </div>
-        <div class="rounded-xl bg-slate-950/75 border border-slate-800 p-2.5 text-[10px] text-slate-400 space-y-1">
+        <div class="rounded-xl bg-slate-950/75 border border-slate-800 p-2.5 text-[10px] text-slate-400 space-y-1.5">
           <div class="flex items-center justify-between"><span>同期ステータス:</span><span id="syncModalStatusText" class="font-mono text-slate-300">接続待機中</span></div>
+          <div class="flex items-center justify-between pt-0.5">
+            <span>GitHub Pages 公開 URL / 設定コピー:</span>
+            <button id="btnCopyPagesConfig" type="button" class="rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-0.5 text-[9px] text-sky-200 transition">Pages設定コピー</button>
+          </div>
+          <div id="githubPagesHintText" class="rounded-lg bg-slate-900/70 border border-slate-800/80 px-2 py-1 font-mono text-[9px] text-slate-300 break-all">
+            Project: zdyegofffljtpplbfbpr | Table: astral_ocean_rooms | Room: astral-main-room
+          </div>
           <div class="flex items-center justify-between pt-0.5">
             <span>テーブル作成SQL（初回のみ SQL Editor で実行）:</span>
             <button id="btnCopySyncSql" type="button" class="rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-0.5 text-[9px] text-indigo-200 transition">SQLコピー</button>
@@ -513,6 +534,30 @@ alter table astral_ocean_rooms disable row level security;</pre>
       const INVITE_CODE_PLAIN = 'ASTRAL-INVITE-2026';
 
       /**
+       * UTF-8文字列を安全にBase64エンコードするヘルパー（日本語・特殊文字対応）
+       * @param {string} str
+       * @returns {string}
+       */
+      function utf8ToBase64(str) {
+        const s = String(str ?? '');
+        try {
+          if (typeof TextEncoder !== 'undefined') {
+            const bytes = new TextEncoder().encode(s);
+            let bin = '';
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              const slice = bytes.subarray(i, i + chunkSize);
+              bin += String.fromCharCode.apply(null, slice);
+            }
+            return btoa(bin);
+          }
+        } catch (err) {
+          // フォールバックへ進む
+        }
+        return btoa(unescape(encodeURIComponent(s)));
+      }
+
+      /**
        * Web Crypto API 非対応環境向けの決定論的256bit相当ハッシュ生成
        * @param {string} input
        * @returns {string} 64桁の16進数文字列
@@ -566,10 +611,11 @@ alter table astral_ocean_rooms disable row level security;</pre>
         return EXPECTED_INVITE_HASH_HEX;
       })();
 
+      // DEFAULT_SUPABASE_CONFIG: Default connection settings for Astral Ocean shared room
       const DEFAULT_SUPABASE_CONFIG = {
         enabled: true,
         url: 'https://zdyegofffljtpplbfbpr.supabase.co',
-        anonKey: 'sb_publishable_FtHTnP8YGNcZ2klgZHhj8g_VBdnagLD',
+        anonKey: 'sb_publishable_sn8spfNt0po5v3y1UNgN0g_cwLNSzq6',
         table: 'astral_ocean_rooms',
         roomId: 'astral-main-room'
       };
@@ -623,21 +669,27 @@ alter table astral_ocean_rooms disable row level security;</pre>
       }
 
       function createDefaultSampleImageDataUrl(label = 'Planet Image', bgHex = '#1e293b', accentHex = '#38bdf8') {
-        const safeLabel = String(label || 'Planet').slice(0, 26);
+        const safeLabel = String(label || 'Planet').slice(0, 32);
+        const safeBg = /^#[0-9a-fA-F]{3,8}$/.test(bgHex) ? bgHex : '#1e293b';
+        const safeAccent = /^#[0-9a-fA-F]{3,8}$/.test(accentHex) ? accentHex : '#38bdf8';
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
           <defs>
             <radialGradient id="g" cx="38%" cy="35%" r="65%">
               <stop offset="0%" stop-color="#f8fafc"/>
-              <stop offset="30%" stop-color="${accentHex}"/>
-              <stop offset="100%" stop-color="${bgHex}"/>
+              <stop offset="30%" stop-color="${safeAccent}"/>
+              <stop offset="100%" stop-color="${safeBg}"/>
             </radialGradient>
           </defs>
           <rect width="800" height="500" fill="#020617"/>
           <circle cx="400" cy="230" r="120" fill="url(#g)"/>
-          <ellipse cx="400" cy="230" rx="195" ry="44" fill="none" stroke="${accentHex}" stroke-opacity="0.45" stroke-width="4"/>
-          <text x="400" y="425" fill="#e2e8f0" font-family="sans-serif" font-size="24" text-anchor="middle">${safeLabel.replace(/[<>&'"]/g, '')}</text>
+          <ellipse cx="400" cy="230" rx="195" ry="44" fill="none" stroke="${safeAccent}" stroke-opacity="0.45" stroke-width="4"/>
+          <text x="400" y="425" fill="#e2e8f0" font-family="sans-serif" font-size="24" text-anchor="middle">${escapeHtml(safeLabel)}</text>
         </svg>`;
-        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        try {
+          return `data:image/svg+xml;base64,${utf8ToBase64(svg)}`;
+        } catch (err) {
+          return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        }
       }
 
       function normalizePlanetType(planet) {
@@ -840,12 +892,19 @@ alter table astral_ocean_rooms disable row level security;</pre>
         syncStatusLabel: $('syncStatusLabel'),
         inviteStatusBadge: $('inviteStatusBadge'),
         btnLockInvite: $('btnLockInvite'),
-        btnUnlockInvite: $('btnUnlockInvite'),
+        btnToggleInviteVisibility: $('btnToggleInviteVisibility'),
+        inviteVisibilityIcon: $('inviteVisibilityIcon'),
+        btnFillDefaultInvite: $('btnFillDefaultInvite'),
+        btnResetInviteAuth: $('btnResetInviteAuth'),
+        syncGatePolicyText: $('syncGatePolicyText'),
+        btnCopyPagesConfig: $('btnCopyPagesConfig'),
+        githubPagesHintText: $('githubPagesHintText'),
         inviteLockIcon: $('inviteLockIcon'),
         inviteLockLabel: $('inviteLockLabel'),
         inviteAuthBadge: $('inviteAuthBadge'),
         inviteCodeInput: $('inviteCodeInput'),
         btnVerifyInviteCode: $('btnVerifyInviteCode'),
+        btnUpdateCustomInviteCode: $('btnUpdateCustomInviteCode'),
         inviteAuthStatusText: $('inviteAuthStatusText'),
         btnModalLockInvite: $('btnModalLockInvite'),
         btnResetView: $('btnResetView'),
@@ -992,6 +1051,14 @@ alter table astral_ocean_rooms disable row level security;</pre>
         }
       }
 
+      function saveSyncConfigToLocalStorage() {
+        try {
+          localStorage.setItem(STORAGE_KEYS.SYNC_CONFIG, JSON.stringify(appState.syncConfig));
+        } catch (err) {
+          // ストレージ容量超過時は無視
+        }
+      }
+
       function loadInviteAuthFromLocalStorage() {
         try {
           const raw = localStorage.getItem(STORAGE_KEYS.INVITE_AUTH);
@@ -999,19 +1066,22 @@ alter table astral_ocean_rooms disable row level security;</pre>
             return {
               authenticated: true,
               codeHint: INVITE_CODE_PLAIN,
+              customHashHex: '',
               verifiedAt: Date.now()
             };
           }
           const parsed = JSON.parse(raw);
           return {
             authenticated: Boolean(parsed && parsed.authenticated),
-            codeHint: (parsed && parsed.codeHint) ? String(parsed.codeHint) : INVITE_CODE_PLAIN,
+            codeHint: (parsed && typeof parsed.codeHint === 'string') ? parsed.codeHint : INVITE_CODE_PLAIN,
+            customHashHex: (parsed && typeof parsed.customHashHex === 'string') ? parsed.customHashHex : '',
             verifiedAt: Number((parsed && parsed.verifiedAt) || 0)
           };
         } catch (err) {
           return {
             authenticated: true,
             codeHint: INVITE_CODE_PLAIN,
+            customHashHex: '',
             verifiedAt: Date.now()
           };
         }
@@ -1041,6 +1111,17 @@ alter table astral_ocean_rooms disable row level security;</pre>
         return Boolean(appState.inviteAuth && appState.inviteAuth.authenticated);
       }
 
+      async function getActiveExpectedInviteHashHex() {
+        await expectedHashReadyPromise;
+        const customHash = appState.inviteAuth && typeof appState.inviteAuth.customHashHex === 'string'
+          ? appState.inviteAuth.customHashHex.trim()
+          : '';
+        if (customHash) {
+          return customHash;
+        }
+        return EXPECTED_INVITE_HASH_HEX || deterministicFallbackHashHex(INVITE_CODE_PLAIN.trim().toUpperCase());
+      }
+
       function saveInviteAuthToLocalStorage() {
         try {
           localStorage.setItem(STORAGE_KEYS.INVITE_AUTH, JSON.stringify(appState.inviteAuth));
@@ -1062,6 +1143,12 @@ alter table astral_ocean_rooms disable row level security;</pre>
       function updateInviteAuthUI() {
         const authed = isInviteAuthenticated();
         const roomLabel = (appState.syncConfig && appState.syncConfig.roomId) || 'astral-main-room';
+        const tableLabel = (appState.syncConfig && appState.syncConfig.table) || 'astral_ocean_rooms';
+        const urlLabel = (appState.syncConfig && appState.syncConfig.url) || DEFAULT_SUPABASE_CONFIG.url;
+        const hasCustomCode = Boolean(appState.inviteAuth && appState.inviteAuth.customHashHex);
+        const activeHint = hasCustomCode
+          ? ((appState.inviteAuth && appState.inviteAuth.codeHint) || 'カスタムコード設定済み')
+          : INVITE_CODE_PLAIN;
 
         if (els.inviteLockIcon) {
           els.inviteLockIcon.className = authed ? 'ph ph-lock-open text-sm text-emerald-300' : 'ph ph-lock text-sm text-rose-400';
@@ -1072,7 +1159,7 @@ alter table astral_ocean_rooms disable row level security;</pre>
         if (els.inviteStatusBadge) {
           if (authed) {
             els.inviteStatusBadge.className = 'hidden sm:inline-flex items-center gap-1 rounded-xl bg-emerald-500/15 border border-emerald-400/35 px-2 py-1 text-[10px] font-mono text-emerald-300';
-            els.inviteStatusBadge.textContent = '認証済み';
+            els.inviteStatusBadge.textContent = hasCustomCode ? '認証済み(カスタム)' : '認証済み';
           } else {
             els.inviteStatusBadge.className = 'hidden sm:inline-flex items-center gap-1 rounded-xl bg-rose-500/15 border border-rose-400/35 px-2 py-1 text-[10px] font-mono text-rose-300';
             els.inviteStatusBadge.textContent = '未認証';
@@ -1081,16 +1168,37 @@ alter table astral_ocean_rooms disable row level security;</pre>
         if (els.inviteAuthBadge) {
           if (authed) {
             els.inviteAuthBadge.className = 'rounded-full px-2 py-0.5 text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
-            els.inviteAuthBadge.textContent = '認証済み';
+            els.inviteAuthBadge.textContent = hasCustomCode ? '認証済み(カスタム)' : '認証済み';
           } else {
             els.inviteAuthBadge.className = 'rounded-full px-2 py-0.5 text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-400/40';
             els.inviteAuthBadge.textContent = '未認証（同期停止）';
           }
         }
         if (els.inviteAuthStatusText) {
-          els.inviteAuthStatusText.textContent = authed
-            ? `招待コード認証済み（共有ルーム: ${roomLabel}）`
-            : `未認証です。コード「${INVITE_CODE_PLAIN}」を入力して認証してください`;
+          if (authed) {
+            els.inviteAuthStatusText.textContent = hasCustomCode
+              ? `カスタム認証コード有効（表示: ${activeHint} / ルーム: ${roomLabel}）`
+              : `招待コード認証済み（既定: ${INVITE_CODE_PLAIN} / ルーム: ${roomLabel}）`;
+          } else {
+            els.inviteAuthStatusText.textContent = hasCustomCode
+              ? '未認証です。設定したカスタム招待コードを入力して認証してください'
+              : `未認証です。コード「${INVITE_CODE_PLAIN}」を入力して認証してください`;
+          }
+        }
+        if (els.syncGatePolicyText) {
+          if (authed) {
+            els.syncGatePolicyText.className = 'font-mono text-emerald-300';
+            els.syncGatePolicyText.textContent = `許可（ルーム ${roomLabel} 送受信有効）`;
+          } else {
+            els.syncGatePolicyText.className = 'font-mono text-rose-300';
+            els.syncGatePolicyText.textContent = '遮断中（未認証のため Pull / Push 停止）';
+          }
+        }
+        if (els.githubPagesHintText) {
+          const pagesOrigin = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null'
+            ? window.location.origin
+            : 'https://<user>.github.io/<repo>/';
+          els.githubPagesHintText.textContent = `Pages: ${pagesOrigin} | URL: ${urlLabel} | Table: ${tableLabel} | Room: ${roomLabel}`;
         }
 
         if (!authed) {
@@ -1105,25 +1213,55 @@ alter table astral_ocean_rooms disable row level security;</pre>
         }
       }
 
-      /**
-       * 招待コードの検証と認証状態の更新（大文字/小文字・前後空白を正規化）
-       * @param {string} rawCode
-       * @param {boolean} showFeedback
-       * @returns {Promise<boolean>}
-       */
+      async function setCustomInviteCode(rawCode, showFeedback = true) {
+        const normalizedCode = String(rawCode || '').trim().toUpperCase();
+        if (normalizedCode.length < 4) {
+          if (showFeedback) {
+            showToast('招待コードは4文字以上で入力してください', 'ph-warning');
+          }
+          return false;
+        }
+        const hashHex = await computeInviteHashHex(normalizedCode);
+        if (!hashHex) {
+          if (showFeedback) {
+            showToast('招待コードのハッシュ化に失敗しました', 'ph-warning');
+          }
+          return false;
+        }
+        appState.inviteAuth = {
+          authenticated: true,
+          codeHint: normalizedCode,
+          customHashHex: hashHex,
+          verifiedAt: Date.now()
+        };
+        saveInviteAuthToLocalStorage();
+        if (els.inviteCodeInput) {
+          els.inviteCodeInput.value = normalizedCode;
+        }
+        updateInviteAuthUI();
+        if (appState.syncConfig && appState.syncConfig.enabled) {
+          startSyncLoop();
+        }
+        if (showFeedback) {
+          showToast(`新しい招待コード「${normalizedCode}」を設定・認証しました`, 'ph-key');
+        }
+        return true;
+      }
+
       async function verifyAndAuthenticateInviteCode(rawCode, showFeedback = true) {
         const normalizedCode = String(rawCode || '').trim().toUpperCase();
         if (!normalizedCode) {
           if (showFeedback) showToast('招待コードを入力してください', 'ph-warning');
           return false;
         }
-        await expectedHashReadyPromise;
-        const expected = EXPECTED_INVITE_HASH_HEX || deterministicFallbackHashHex(INVITE_CODE_PLAIN.trim().toUpperCase());
+        const expected = await getActiveExpectedInviteHashHex();
         const actual = await computeInviteHashHex(normalizedCode);
         if (actual && actual === expected) {
+          const prevCustomHash = (appState.inviteAuth && appState.inviteAuth.customHashHex) || '';
           appState.inviteAuth = {
             authenticated: true,
             codeHint: normalizedCode,
+            customHashHex: prevCustomHash,
             verifiedAt: Date.now()
           };
           saveInviteAuthToLocalStorage();
@@ -1138,7 +1276,7 @@ alter table astral_ocean_rooms disable row level security;</pre>
           return true;
         }
         if (showFeedback) {
-          showToast(`招待コードが一致しません（${INVITE_CODE_PLAIN} を確認してください）`, 'ph-warning');
+          showToast('招待コードが一致しません。入力内容を確認してください', 'ph-warning');
         }
         return false;
       }
@@ -1146,9 +1284,11 @@ alter table astral_ocean_rooms disable row level security;</pre>
       function lockInviteAuthentication(showFeedback = true) {
         stopSyncLoop();
         appState.isSyncing = false;
+        const prevCustomHash = (appState.inviteAuth && appState.inviteAuth.customHashHex) || '';
         appState.inviteAuth = {
           authenticated: false,
-          codeHint: '',
+          codeHint: prevCustomHash ? ((appState.inviteAuth && appState.inviteAuth.codeHint) || '') : '',
+          customHashHex: prevCustomHash,
           verifiedAt: 0
         };
         saveInviteAuthToLocalStorage();
@@ -1158,11 +1298,48 @@ alter table astral_ocean_rooms disable row level security;</pre>
         }
       }
 
-      function saveSyncConfigToLocalStorage() {
+      function resetInviteAuthenticationToDefault(showFeedback = true) {
+        stopSyncLoop();
+        appState.isSyncing = false;
         try {
-          localStorage.setItem(STORAGE_KEYS.SYNC_CONFIG, JSON.stringify(appState.syncConfig));
+          localStorage.removeItem(STORAGE_KEYS.INVITE_AUTH);
         } catch (err) {
-          // ストレージ容量超過時は無視
+          // ストレージ削除失敗時はメモリ状態で継続
+        }
+        appState.inviteAuth = {
+          authenticated: true,
+          codeHint: INVITE_CODE_PLAIN,
+          customHashHex: '',
+          verifiedAt: Date.now()
+        };
+        saveInviteAuthToLocalStorage();
+        if (els.inviteCodeInput) {
+          els.inviteCodeInput.value = INVITE_CODE_PLAIN;
+        }
+        updateInviteAuthUI();
+        if (appState.syncConfig && appState.syncConfig.enabled) {
+          startSyncLoop();
+        }
+        if (showFeedback) {
+          showToast(`招待コードを初期値（${INVITE_CODE_PLAIN}・認証済み）へ戻しました`, 'ph-arrow-counter-clockwise');
+        }
+      }
+
+      function copyTextWithFallback(text, successMsg, failMsg) {
+        if (!text) return;
+        const tempArea = document.createElement('textarea');
+        tempArea.value = text;
+        tempArea.style.position = 'fixed';
+        tempArea.style.opacity = '0';
+        document.body.appendChild(tempArea);
+        tempArea.select();
+        try {
+          document.execCommand('copy');
+          showToast(successMsg, 'ph-copy');
+        } catch (err) {
+          showToast(failMsg, 'ph-warning');
+        } finally {
+          document.body.removeChild(tempArea);
         }
       }
 
@@ -1208,7 +1385,7 @@ alter table astral_ocean_rooms disable row level security;</pre>
           const baseUrl = normalizeSupabaseUrl(cfg.url);
           const table = encodeURIComponent((cfg.table || 'astral_ocean_rooms').trim());
           const roomId = (cfg.roomId || 'astral-main-room').trim();
-          const ts = Number(appState.data.updatedAt || Date.now());
+          const ts = Math.max(Number(appState.data.updatedAt || 0), Date.now());
           appState.data.updatedAt = ts;
 
           const endpoint = `${baseUrl}/rest/v1/${table}?on_conflict=room_id`;
@@ -1437,7 +1614,7 @@ alter table astral_ocean_rooms disable row level security;</pre>
         starfield: null,
         sunLight: null,
         raycaster: null,
-        pointerNDC: { x: 0, y: 0 },
+        pointerNDC: null,
         cameraTarget: { x: 0, y: 0, z: 0 },
         cameraSpherical: {
           radius: BASE_DISTANCE,
@@ -2950,9 +3127,16 @@ alter table astral_ocean_rooms disable row level security;</pre>
 
       function openNewPlanetModal() {
         if (appState.data.stars.length === 0) addNewStar();
+        const defaultStarId =
+          appState.data.selectedKind === 'star' && getStarById(appState.data.selectedId)
+            ? appState.data.selectedId
+            : appState.data.selectedKind === 'planet' && getPlanetById(appState.data.selectedId)
+              ? getPlanetById(appState.data.selectedId).starId
+              : appState.data.stars[0].id;
+
         if (els.newPlanetStar) {
           els.newPlanetStar.innerHTML = appState.data.stars
-            .map((s) => `<option value="${escapeHtml(s.id)}" ${appState.data.selectedId === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`)
+            .map((s) => `<option value="${escapeHtml(s.id)}" ${defaultStarId === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`)
             .join('');
         }
         if (els.newPlanetName) {
@@ -2989,10 +3173,12 @@ alter table astral_ocean_rooms disable row level security;</pre>
         }
         if (els.newPlanetName) els.newPlanetName.setCustomValidity('');
 
-        const starId = (els.newPlanetStar && els.newPlanetStar.value) || (appState.data.stars[0] && appState.data.stars[0].id);
+        const starId =
+          (els.newPlanetStar && els.newPlanetStar.value && getStarById(els.newPlanetStar.value) && els.newPlanetStar.value) ||
+          (appState.data.stars[0] && appState.data.stars[0].id);
         const type = els.newPlanetType && els.newPlanetType.value === 'image' ? 'image' : 'document';
-        const radius = Number((els.newPlanetRadius && els.newPlanetRadius.value) || 3.8);
-        const orbitRadius = Number((els.newPlanetOrbit && els.newPlanetOrbit.value) || 44);
+        const radius = clampVal(Number((els.newPlanetRadius && els.newPlanetRadius.value) || 3.8), 1.5, 10.0);
+        const orbitRadius = clampVal(Number((els.newPlanetOrbit && els.newPlanetOrbit.value) || 44), 12, 240);
 
         const defaultColors = {
           document: '#38bdf8',
@@ -3023,7 +3209,10 @@ alter table astral_ocean_rooms disable row level security;</pre>
         if (type === 'image' && file) {
           const reader = new FileReader();
           reader.onload = () => {
-            planet.imageUrl = String(reader.result || '');
+            planet.imageUrl = String(reader.result || '') || planet.imageUrl;
+            finalizeCreatedPlanet(planet);
+          };
+          reader.onerror = () => {
             finalizeCreatedPlanet(planet);
           };
           reader.readAsDataURL(file);
@@ -3033,6 +3222,10 @@ alter table astral_ocean_rooms disable row level security;</pre>
       }
 
       function finalizeCreatedPlanet(planet) {
+        if (!Array.isArray(appState.data.collapsedStarIds)) {
+          appState.data.collapsedStarIds = [];
+        }
+        appState.data.collapsedStarIds = appState.data.collapsedStarIds.filter((id) => id !== planet.starId);
         appState.data.planets.push(planet);
         appState.data.selectedKind = 'planet';
         appState.data.selectedId = planet.id;
@@ -3049,10 +3242,16 @@ alter table astral_ocean_rooms disable row level security;</pre>
 
       function handleLocalFilesImport(filesList) {
         if (!filesList || filesList.length === 0) return;
-        const targetStar = getStarById(appState.data.selectedId) || appState.data.stars[0];
+        const targetStar =
+          (appState.data.selectedKind === 'star' && getStarById(appState.data.selectedId)) ||
+          (appState.data.selectedKind === 'planet' &&
+            getPlanetById(appState.data.selectedId) &&
+            getStarById(getPlanetById(appState.data.selectedId).starId)) ||
+          appState.data.stars[0];
         if (!targetStar) return;
 
-        Array.from(filesList).forEach((file, index) => {
+        const fileArray = Array.from(filesList);
+        const createdPlanets = fileArray.map((file, index) => {
           const mime = (file.type || '').toLowerCase();
           const lowerName = (file.name || '').toLowerCase();
           let type = 'document';
@@ -3064,7 +3263,7 @@ alter table astral_ocean_rooms disable row level security;</pre>
           }
 
           const orbitRadius = 38 + ((appState.data.planets.length + index) % 6) * 20;
-          const planet = {
+          return {
             id: `planet-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
             starId: targetStar.id,
             name: file.name,
@@ -3076,34 +3275,51 @@ alter table astral_ocean_rooms disable row level security;</pre>
             orbitAngle: index * 1.1,
             inclination: 0.04,
             contentHtml: `<h1>${escapeHtml(file.name)}</h1><p>ローカルファイルから読み込まれました（${Math.max(1, Math.round(file.size / 1024))} KB）。</p>`,
-            imageUrl: '',
+            imageUrl: type === 'image' ? createDefaultSampleImageDataUrl(file.name, '#312e81', '#db2777') : '',
             updatedAt: Date.now()
           };
-
-          if (type === 'image' && file.size <= 3 * 1024 * 1024) {
-            const reader = new FileReader();
-            reader.onload = () => {
-              planet.imageUrl = String(reader.result || '');
-              saveStateToLocalStorage(true);
-            };
-            reader.readAsDataURL(file);
-          } else if (type === 'document' && file.size <= 512 * 1024) {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const txt = String(reader.result || '');
-              planet.contentHtml = `<h1>${escapeHtml(file.name)}</h1><pre class="whitespace-pre-wrap text-xs bg-slate-950 p-3 rounded-xl border border-slate-800">${escapeHtml(txt.slice(0, 4000))}</pre>`;
-              saveStateToLocalStorage(true);
-            };
-            reader.readAsText(file);
-          }
-
-          appState.data.planets.push(planet);
         });
 
+        appState.data.planets.push(...createdPlanets);
+        appState.data.collapsedStarIds = (appState.data.collapsedStarIds || []).filter((id) => id !== targetStar.id);
         rebuild3DScene();
         renderAllUI();
-        saveStateToLocalStorage(true);
-        showToast(`${filesList.length} 件のファイルを惑星として配置しました`, 'ph-folder-open');
+        saveStateToLocalStorage(false);
+
+        const readPromises = fileArray.map((file, index) => {
+          const targetPlanet = createdPlanets[index];
+          if (!targetPlanet) return Promise.resolve();
+          return new Promise((resolve) => {
+            if (targetPlanet.type === 'image' && file.size <= 3 * 1024 * 1024) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                targetPlanet.imageUrl = String(reader.result || '') || targetPlanet.imageUrl;
+                targetPlanet.updatedAt = Date.now();
+                resolve();
+              };
+              reader.onerror = () => resolve();
+              reader.readAsDataURL(file);
+            } else if (targetPlanet.type === 'document' && file.size <= 512 * 1024) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const txt = String(reader.result || '');
+                targetPlanet.contentHtml = `<h1>${escapeHtml(file.name)}</h1><pre class="whitespace-pre-wrap text-xs bg-slate-950 p-3 rounded-xl border border-slate-800">${escapeHtml(txt.slice(0, 4000))}</pre>`;
+                targetPlanet.updatedAt = Date.now();
+                resolve();
+              };
+              reader.onerror = () => resolve();
+              reader.readAsText(file);
+            } else {
+              resolve();
+            }
+          });
+        });
+
+        Promise.all(readPromises).then(() => {
+          saveStateToLocalStorage(true);
+        });
+
+        showToast(`${fileArray.length} 件のファイルを惑星として配置しました`, 'ph-folder-open');
       }
 
       function openBlackHoleModal(kind, id) {
@@ -3514,12 +3730,46 @@ alter table astral_ocean_rooms disable row level security;</pre>
             els.inviteCodeInput.focus();
           }
         });
-        onEl(els.btnUnlockInvite, 'click', async () => {
-          const codeToVerify = (els.inviteCodeInput && els.inviteCodeInput.value.trim()) || INVITE_CODE_PLAIN;
-          if (els.inviteCodeInput && !els.inviteCodeInput.value.trim()) {
-            els.inviteCodeInput.value = INVITE_CODE_PLAIN;
+        onEl(els.btnToggleInviteVisibility, 'click', () => {
+          if (!els.inviteCodeInput) return;
+          const isPassword = els.inviteCodeInput.type === 'password';
+          els.inviteCodeInput.type = isPassword ? 'text' : 'password';
+          if (els.inviteVisibilityIcon) {
+            els.inviteVisibilityIcon.className = isPassword ? 'ph ph-eye-slash text-sm' : 'ph ph-eye text-sm';
           }
-          await verifyAndAuthenticateInviteCode(codeToVerify, true);
+        });
+        onEl(els.btnFillDefaultInvite, 'click', () => {
+          const hasCustom = Boolean(appState.inviteAuth && appState.inviteAuth.customHashHex);
+          const targetCode = hasCustom
+            ? ((appState.inviteAuth && appState.inviteAuth.codeHint) || INVITE_CODE_PLAIN)
+            : INVITE_CODE_PLAIN;
+          if (els.inviteCodeInput) {
+            els.inviteCodeInput.value = targetCode;
+            els.inviteCodeInput.focus();
+          }
+          showToast(`現在の招待コード「${targetCode}」を入力しました`, 'ph-key');
+        });
+        onEl(els.btnUpdateCustomInviteCode, 'click', async () => {
+          const val = els.inviteCodeInput ? els.inviteCodeInput.value : '';
+          await setCustomInviteCode(val, true);
+        });
+        onEl(els.btnResetInviteAuth, 'click', () => {
+          resetInviteAuthenticationToDefault(true);
+        });
+        onEl(els.btnCopyPagesConfig, 'click', () => {
+          const fields = readSyncFormFields();
+          const pagesOrigin = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null'
+            ? window.location.origin
+            : 'https://<user>.github.io/<repo>/';
+          const activeCode = (appState.inviteAuth && appState.inviteAuth.codeHint) || INVITE_CODE_PLAIN;
+          const summary = [
+            `GitHub Pages Origin: ${pagesOrigin}`,
+            `Supabase URL: ${fields.url}`,
+            `Table: ${fields.table}`,
+            `Room ID: ${fields.roomId}`,
+            `Invite Code: ${activeCode}`
+          ].join('\n');
+          copyTextWithFallback(summary, 'GitHub Pages / Supabase 設定情報をコピーしました', '設定情報のコピーに失敗しました');
         });
         onEl(els.btnVerifyInviteCode, 'click', async () => {
           const val = els.inviteCodeInput ? els.inviteCodeInput.value : '';
@@ -3535,20 +3785,7 @@ alter table astral_ocean_rooms disable row level security;</pre>
         onEl(els.btnCopySyncSql, 'click', () => {
           const sqlText = els.syncSqlSnippet ? els.syncSqlSnippet.textContent.trim() : '';
           if (!sqlText) return;
-          const tempArea = document.createElement('textarea');
-          tempArea.value = sqlText;
-          tempArea.style.position = 'fixed';
-          tempArea.style.opacity = '0';
-          document.body.appendChild(tempArea);
-          tempArea.select();
-          try {
-            document.execCommand('copy');
-            showToast('テーブル作成SQLをクリップボードにコピーしました', 'ph-copy');
-          } catch (err) {
-            showToast('SQLのコピーに失敗しました', 'ph-warning');
-          } finally {
-            document.body.removeChild(tempArea);
-          }
+          copyTextWithFallback(sqlText, 'テーブル作成SQLをクリップボードにコピーしました', 'SQLのコピーに失敗しました');
         });
 
         onEl(els.btnConnectSync, 'click', async () => {
