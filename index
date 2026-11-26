@@ -1,0 +1,3992 @@
+<!DOCTYPE html>
+<html lang="ja" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astral Ocean — 空間ファイル整理アプリ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Hiragino Sans', 'Meiryo', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web" defer crossorigin="anonymous"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Meiryo', sans-serif;
+      overflow: hidden;
+      background-color: #020617;
+      color: #f1f5f9;
+      touch-action: manipulation;
+    }
+
+    #viewport-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      touch-action: none;
+      background: radial-gradient(circle at 50% 45%, #091124 0%, #020617 75%);
+    }
+
+    #viewport-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.45);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.45);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.7);
+    }
+
+    #astralDocEditor {
+      user-select: text;
+      -webkit-user-select: text;
+      min-height: 320px;
+      outline: none;
+    }
+    #astralDocEditor h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0.75rem 0 0.5rem;
+      color: #f8fafc;
+    }
+    #astralDocEditor h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0.65rem 0 0.4rem;
+      color: #e2e8f0;
+    }
+    #astralDocEditor p {
+      margin: 0.45rem 0;
+      line-height: 1.75;
+    }
+    #astralDocEditor ul, #astralDocEditor ol {
+      padding-left: 1.5rem;
+      margin: 0.45rem 0;
+    }
+    #astralDocEditor blockquote {
+      border-left: 3px solid #38bdf8;
+      padding: 0.35rem 0.9rem;
+      color: #94a3b8;
+      font-style: italic;
+      margin: 0.5rem 0;
+      background: rgba(56, 189, 248, 0.08);
+      border-radius: 0 0.5rem 0.5rem 0;
+    }
+
+    .hud-element {
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .hud-hidden .hud-element {
+      opacity: 0;
+      pointer-events: none !important;
+      transform: translateY(-6px);
+    }
+
+    #restoreHudFloatingBtn {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-8px) scale(0.96);
+      transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .hud-hidden #restoreHudFloatingBtn {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+
+    .checker-bg {
+      background-image:
+        linear-gradient(45deg, rgba(30, 41, 59, 0.55) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(30, 41, 59, 0.55) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(30, 41, 59, 0.55) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(30, 41, 59, 0.55) 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    }
+
+    input[type="range"] {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased">
+  <!-- 空間ビューポートコンテナ -->
+  <div id="viewport-container"></div>
+
+  <!-- HUD非表示時のフローティング再表示ボタン -->
+  <button id="restoreHudFloatingBtn" type="button" title="画面UIを再表示 (Shift+H)" class="fixed top-4 right-4 z-40 flex items-center gap-2 rounded-2xl bg-sky-500/25 hover:bg-sky-500/40 active:scale-95 backdrop-blur-md border border-sky-300/60 px-4 py-2.5 text-xs sm:text-sm font-semibold text-sky-100 shadow-[0_8px_28px_rgba(14,165,233,0.35)] cursor-pointer">
+    <i class="ph-bold ph-eye text-base text-sky-300"></i>
+    <span>再表示</span>
+    <span class="hidden sm:inline rounded-md bg-slate-950/60 px-1.5 py-0.5 text-[10px] font-mono text-sky-200/90">Shift+H</span>
+  </button>
+
+  <!-- トースト通知 -->
+  <div id="toastBanner" class="hud-element fixed bottom-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-200 rounded-xl bg-slate-900/95 border border-sky-400/40 px-4 py-2 text-xs font-medium text-sky-100 shadow-2xl flex items-center gap-2 opacity-0 translate-y-2">
+    <i id="toastIcon" class="ph ph-info text-sky-400 text-sm"></i>
+    <span id="toastText">通知</span>
+  </div>
+
+  <!-- トップヘッダー -->
+  <header class="hud-element fixed top-3 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+    <div class="pointer-events-auto flex flex-wrap items-center gap-2 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/70 px-3 py-2 shadow-xl">
+      <button id="btnToggleExplorer" type="button" title="星系エクスプローラーを開閉" class="rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 p-2 text-sky-300 transition">
+        <i class="ph ph-sidebar-simple text-base"></i>
+      </button>
+
+      <div class="flex items-center gap-2 pr-1">
+        <span class="h-2.5 w-2.5 rounded-full bg-sky-400 shadow-[0_0_10px_#38bdf8]"></span>
+        <span class="font-bold tracking-wide text-sm text-slate-100">Astral Ocean</span>
+      </div>
+
+      <!-- 3D / 2D 切替 -->
+      <div class="flex items-center rounded-xl bg-slate-950/85 border border-slate-700/80 p-0.5 text-[11px] font-medium">
+        <button id="btnMode3D" type="button" class="rounded-lg px-2.5 py-1 bg-sky-500/25 text-sky-200 border border-sky-400/40 transition flex items-center gap-1">
+          <i class="ph ph-cube text-xs"></i>
+          <span>3D</span>
+        </button>
+        <button id="btnMode2D" type="button" class="rounded-lg px-2.5 py-1 text-slate-400 hover:text-slate-100 transition flex items-center gap-1">
+          <i class="ph ph-squares-four text-xs"></i>
+          <span>2D</span>
+        </button>
+      </div>
+
+      <!-- 検索 -->
+      <div class="relative">
+        <div class="flex items-center rounded-xl bg-slate-950/75 border border-slate-700/80 px-2.5 py-1.5 w-36 sm:w-48 focus-within:border-sky-400 transition">
+          <i class="ph ph-magnifying-glass text-slate-400 text-xs mr-1.5"></i>
+          <input id="searchInput" type="text" placeholder="恒星・惑星を検索..." class="w-full bg-transparent text-xs text-slate-100 placeholder-slate-500 focus:outline-none">
+          <button id="btnClearSearch" type="button" class="hidden text-slate-500 hover:text-slate-300 text-xs">
+            <i class="ph ph-x"></i>
+          </button>
+        </div>
+        <div id="searchDropdown" class="hidden absolute left-0 mt-1.5 w-64 max-h-72 overflow-y-auto rounded-xl bg-slate-900/95 backdrop-blur-md border border-slate-700 shadow-2xl p-1.5 z-50 text-xs"></div>
+      </div>
+    </div>
+
+    <div class="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/70 px-2.5 py-2 shadow-xl text-xs">
+      <button id="btnAddStar" type="button" class="flex items-center gap-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 px-2.5 py-1.5 font-medium text-amber-200 transition">
+        <i class="ph ph-sun text-sm"></i>
+        <span>新規恒星</span>
+      </button>
+
+      <button id="btnOpenNewPlanetModal" type="button" class="flex items-center gap-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 px-2.5 py-1.5 font-medium text-sky-200 transition">
+        <i class="ph ph-planet text-sm"></i>
+        <span>新規惑星</span>
+      </button>
+
+      <label class="flex items-center gap-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 px-2.5 py-1.5 font-medium text-emerald-200 cursor-pointer transition">
+        <i class="ph ph-folder-open text-sm"></i>
+        <span>読込</span>
+        <input id="localFileInput" type="file" multiple class="hidden">
+      </label>
+
+      <!-- 公転一時停止・速度プリセット -->
+      <div class="hidden xl:flex items-center gap-1 rounded-xl bg-slate-950/70 border border-slate-800 px-1.5 py-1">
+        <button id="btnPauseOrbit" type="button" title="公転一時停止/再開" class="rounded-lg p-1 hover:bg-slate-800 text-slate-300 transition">
+          <i id="pauseOrbitIcon" class="ph ph-pause text-sm"></i>
+        </button>
+        <button data-speed-preset="0.25" type="button" class="speed-preset-btn rounded-lg px-1.5 py-0.5 text-[11px] font-mono text-slate-400 hover:text-white">0.25x</button>
+        <button data-speed-preset="0.5" type="button" class="speed-preset-btn rounded-lg px-1.5 py-0.5 text-[11px] font-mono bg-sky-500/25 text-sky-200">0.5x</button>
+        <button data-speed-preset="1" type="button" class="speed-preset-btn rounded-lg px-1.5 py-0.5 text-[11px] font-mono text-slate-400 hover:text-white">1x</button>
+        <button data-speed-preset="2" type="button" class="speed-preset-btn rounded-lg px-1.5 py-0.5 text-[11px] font-mono text-slate-400 hover:text-white">2x</button>
+      </div>
+
+      <!-- Supabase同期＆招待コード認証ボタン -->
+      <button id="btnOpenSyncModal" type="button" title="Supabase 複数端末同期・招待認証設定" class="flex items-center gap-1.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 px-2.5 py-1.5 font-medium text-indigo-200 transition">
+        <span id="syncStatusDot" class="h-2 w-2 rounded-full bg-slate-500"></span>
+        <i class="ph ph-cloud-check text-sm"></i>
+        <span id="syncStatusLabel">ローカル保存</span>
+      </button>
+      <span id="inviteStatusBadge" class="hidden sm:inline-flex items-center gap-1 rounded-xl bg-emerald-500/15 border border-emerald-400/35 px-2 py-1 text-[10px] font-mono text-emerald-300">認証済み</span>
+      <button id="btnLockInvite" type="button" title="招待認証をロック（未認証状態にして再認証テスト）" class="flex items-center gap-1 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/35 px-2 py-1.5 text-amber-200 transition">
+        <i id="inviteLockIcon" class="ph ph-lock-open text-sm"></i>
+        <span id="inviteLockLabel" class="hidden md:inline">招待ロック</span>
+      </button>
+
+      <button id="btnResetView" type="button" title="視点をリセット" class="flex items-center gap-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1.5 text-slate-200 transition">
+        <i class="ph ph-compass text-sm text-sky-400"></i>
+        <span class="hidden sm:inline">視点</span>
+      </button>
+
+      <button id="btnToggleInspector" type="button" title="インスペクターを開閉" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 p-1.5 text-slate-200 transition">
+        <i class="ph ph-sliders-horizontal text-sm"></i>
+      </button>
+
+      <button id="btnToggleHud" type="button" title="画面非表示 / 再表示 (Shift+H)" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 p-1.5 text-slate-300 transition">
+        <i class="ph ph-eye-slash text-sm"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- 左サイドバー：星系エクスプローラー -->
+  <aside id="explorerPanel" class="hud-element fixed top-20 bottom-16 left-3 z-20 w-72 max-w-[85vw] flex flex-col rounded-2xl bg-slate-900/88 backdrop-blur-md border border-slate-700/70 shadow-2xl overflow-hidden transition-transform duration-200">
+    <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-800/90">
+      <div class="flex items-center gap-2">
+        <i class="ph ph-orbit text-sky-400 text-base"></i>
+        <span class="font-semibold text-xs tracking-wide text-slate-100">星系エクスプローラー</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <button id="btnExpandAllPlanets" type="button" title="全恒星・惑星カードを展開" class="rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 px-1.5 py-1 text-[10px] text-sky-300 transition">全展開</button>
+        <button id="btnCollapseAllPlanets" type="button" title="全恒星・惑星カードを縮小" class="rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 px-1.5 py-1 text-[10px] text-slate-300 transition">全縮小</button>
+        <button id="btnCloseExplorer" type="button" class="rounded-lg p-1 text-slate-400 hover:text-white hover:bg-slate-800"><i class="ph ph-x text-xs"></i></button>
+      </div>
+    </div>
+
+    <div class="px-3 pt-2 pb-1.5 border-b border-slate-800/70 space-y-2">
+      <div class="grid grid-cols-2 gap-1 rounded-xl bg-slate-950/75 p-1 border border-slate-800 text-[11px]">
+        <button id="tabStarTree" type="button" class="rounded-lg py-1 font-medium bg-sky-500/25 text-sky-200 transition">星系ツリー</button>
+        <button id="tabAllFiles" type="button" class="rounded-lg py-1 font-medium text-slate-400 hover:text-slate-200 transition">全ファイル</button>
+      </div>
+
+      <div class="flex items-center gap-1 overflow-x-auto pb-0.5 text-[11px]">
+        <button data-type-filter="all" type="button" class="type-filter-btn shrink-0 rounded-lg px-2 py-0.5 bg-slate-800 text-sky-300 border border-sky-500/40">すべて</button>
+        <button data-type-filter="document" type="button" class="type-filter-btn shrink-0 rounded-lg px-2 py-0.5 bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800">文書</button>
+        <button data-type-filter="image" type="button" class="type-filter-btn shrink-0 rounded-lg px-2 py-0.5 bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800">画像</button>
+      </div>
+    </div>
+
+    <div id="explorerList" class="flex-1 overflow-y-auto p-2.5 space-y-2 text-xs"></div>
+
+    <div class="px-3 py-2 border-t border-slate-800/80 bg-slate-950/50 text-[11px] text-slate-400 flex items-center justify-between">
+      <span>惑星をドラッグして別恒星へ移籍</span>
+      <span id="explorerCounts" class="font-mono text-slate-300">1恒星 / 8惑星</span>
+    </div>
+  </aside>
+
+  <!-- 右サイドバー：インスペクター -->
+  <aside id="inspectorPanel" class="hud-element fixed top-20 bottom-16 right-3 z-20 w-80 max-w-[88vw] flex flex-col rounded-2xl bg-slate-900/88 backdrop-blur-md border border-slate-700/70 shadow-2xl overflow-hidden transition-transform duration-200">
+    <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-800/90">
+      <div class="flex items-center gap-2">
+        <i id="inspectorHeaderIcon" class="ph-fill ph-sun text-amber-400 text-base"></i>
+        <span id="inspectorHeaderTitle" class="font-semibold text-xs tracking-wide text-slate-100">恒星インスペクター</span>
+      </div>
+      <button id="btnCloseInspector" type="button" class="rounded-lg p-1 text-slate-400 hover:text-white hover:bg-slate-800"><i class="ph ph-x text-xs"></i></button>
+    </div>
+    <div id="inspectorContent" class="flex-1 overflow-y-auto p-3.5 space-y-4 text-xs"></div>
+  </aside>
+
+  <!-- 下部ズーム＆カメラロックバー -->
+  <footer class="hud-element fixed bottom-3 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center justify-center gap-2 sm:gap-3 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/70 px-3.5 py-2 shadow-xl text-xs max-w-[95vw]">
+    <div id="lockStatusBadge" class="flex items-center gap-1.5 text-slate-300">
+      <i class="ph ph-crosshair text-sky-400"></i>
+      <span id="lockStatusText" class="truncate max-w-[150px] sm:max-w-[220px]">自由視点</span>
+      <button id="btnUnlockCamera" type="button" class="hidden rounded-md bg-sky-500/20 hover:bg-sky-500/35 border border-sky-400/40 px-1.5 py-0.5 text-[10px] text-sky-200">解除</button>
+    </div>
+    <div class="h-4 w-px bg-slate-700/80 hidden sm:block"></div>
+    <div class="flex items-center gap-1.5">
+      <button id="btnZoomOut" type="button" title="ズームアウト (-)" class="rounded-lg p-1 bg-slate-800 hover:bg-slate-700 text-slate-200 transition"><i class="ph ph-minus text-xs"></i></button>
+      <input id="cameraZoomRange" type="range" min="25" max="1800" step="1" value="420" class="w-24 sm:w-28 accent-sky-400">
+      <button id="btnZoomIn" type="button" title="ズームイン (+)" class="rounded-lg p-1 bg-slate-800 hover:bg-slate-700 text-slate-200 transition"><i class="ph ph-plus text-xs"></i></button>
+      <span id="cameraZoomPercent" class="w-12 text-right font-mono text-[11px] text-sky-300">100%</span>
+      <button id="btnZoomReset" type="button" title="ズーム倍率リセット (100%)" class="rounded-lg px-1.5 py-0.5 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 transition">100%</button>
+    </div>
+  </footer>
+
+  <!-- 新規惑星モーダル -->
+  <div id="newPlanetModal" class="hidden pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-5 space-y-4 text-xs">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2"><i class="ph ph-planet text-sky-400 text-lg"></i><h2 class="text-sm font-bold text-slate-100">新規惑星（ファイル）を作成</h2></div>
+        <button id="btnCloseNewPlanetModal" type="button" class="rounded-lg p-1 text-slate-400 hover:text-white hover:bg-slate-800"><i class="ph ph-x text-sm"></i></button>
+      </div>
+      <form id="newPlanetForm" class="space-y-3.5">
+        <div>
+          <label class="block text-[11px] text-slate-400 mb-1">ファイル名 / 惑星名</label>
+          <input id="newPlanetName" type="text" required placeholder="例: 企画書.md / 宇宙写真.png" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-400">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">所属恒星系（フォルダ）</label>
+            <select id="newPlanetStar" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-400"></select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-slate-400 mb-1">惑星タイプ</label>
+            <select id="newPlanetType" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-2 text-xs text-slate-100 focus:outline-none focus:border-sky-400">
+              <option value="document">ドキュメント (.md / .txt)</option>
+              <option value="image">画像ファイル (.png / .jpg)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between text-[11px] mb-1">
+            <span class="text-slate-400">惑星サイズ</span>
+            <span id="newPlanetRadiusValue" class="font-mono text-sky-300">3.8</span>
+          </div>
+          <input id="newPlanetRadius" type="range" min="1.5" max="10.0" step="0.1" value="3.8" class="w-full accent-sky-400">
+        </div>
+        <div>
+          <div class="flex justify-between text-[11px] mb-1">
+            <span class="text-slate-400">公転軌道半径</span>
+            <span id="newPlanetOrbitValue" class="font-mono text-sky-300">44</span>
+          </div>
+          <input id="newPlanetOrbit" type="range" min="12" max="240" step="1" value="44" class="w-full accent-sky-400">
+        </div>
+        <div id="newPlanetImageSection" class="hidden space-y-2 rounded-xl bg-slate-950/70 border border-slate-800 p-3">
+          <label class="block text-[11px] text-slate-400">画像URLまたは端末ファイル（任意）</label>
+          <input id="newPlanetImageUrl" type="url" placeholder="https://... （未指定時はサンプル画像を自動生成）" class="w-full rounded-xl bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-400">
+          <div class="flex items-center justify-between gap-2">
+            <button id="btnPickNewPlanetImageFile" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 text-[11px] text-slate-200 transition">端末から画像を選択</button>
+            <span id="newPlanetImageFileName" class="text-[10px] text-slate-400 truncate">未選択</span>
+            <input id="newPlanetImageFile" type="file" accept="image/*" class="hidden">
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+          <button id="btnCancelNewPlanet" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-3.5 py-2 text-slate-300 transition">キャンセル</button>
+          <button type="submit" class="rounded-xl bg-sky-500 hover:bg-sky-400 px-4 py-2 font-semibold text-slate-950 transition">軌道に配置</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 画像ビューアモーダル -->
+  <div id="astralImageViewerModal" class="hidden pointer-events-none fixed inset-0 z-50 flex flex-col bg-slate-950/90 backdrop-blur-md p-3 sm:p-5 text-xs">
+    <div class="mx-auto w-full max-w-5xl flex-1 flex flex-col rounded-2xl bg-slate-900 border border-slate-700/80 shadow-2xl overflow-hidden">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900/95">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i class="ph ph-image text-pink-400 text-lg shrink-0"></i>
+          <div class="min-w-0">
+            <div id="imageViewerTitle" class="text-sm font-bold text-slate-100 truncate">画像ビューア</div>
+            <div id="imageViewerSubtitle" class="text-[11px] text-slate-400 truncate">所属恒星: 太陽（Sol）</div>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button id="btnViewerZoomOut" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">-</button>
+          <span id="imageViewerZoomLabel" class="font-mono text-[11px] text-pink-300 w-12 text-center">100%</span>
+          <button id="btnViewerZoomIn" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">+</button>
+          <button id="btnViewerFit" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">Fit</button>
+          <button id="btnViewerReset" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">Reset</button>
+          <button id="btnViewerRotate" type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-slate-200">90°回転</button>
+          <button id="btnCloseImageViewer" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1 font-semibold text-slate-100">閉じる</button>
+        </div>
+      </div>
+      <div class="flex-1 checker-bg flex items-center justify-center overflow-hidden p-4 relative">
+        <img id="imageViewerImg" alt="惑星プレビュー画像" class="max-h-full max-w-full object-contain rounded-xl shadow-2xl transition-transform duration-150 select-none">
+        <div id="imageViewerError" class="hidden rounded-xl bg-rose-950/90 border border-rose-500/50 px-4 py-3 text-rose-200 text-xs">
+          画像を読み込めませんでした。URLまたは端末画像を変更してください。
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-t border-slate-800 bg-slate-950/70">
+        <div class="flex items-center gap-2 flex-1 min-w-[220px]">
+          <input id="imageViewerUrlInput" type="url" placeholder="画像URLを入力..." class="flex-1 rounded-xl bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-pink-400">
+          <button id="btnApplyViewerUrl" type="button" class="rounded-xl bg-pink-500/20 hover:bg-pink-500/30 border border-pink-400/40 px-3 py-1.5 font-medium text-pink-200">URL反映</button>
+        </div>
+        <div>
+          <button id="btnUploadViewerFile" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 text-slate-200">端末から変更</button>
+          <input id="imageViewerFileInput" type="file" accept="image/*" class="hidden">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase 同期＆招待認証モーダル -->
+  <div id="supabaseSyncModal" class="hidden pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md rounded-2xl bg-slate-900 border border-indigo-400/40 shadow-2xl p-5 space-y-4 text-xs max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2"><i class="ph ph-cloud-check text-indigo-400 text-lg"></i><div><h2 class="text-sm font-bold text-slate-100">Supabase 複数端末・複数人同期</h2><p class="text-[10px] text-slate-400">招待コード認証（SHA-256）＋共有ルーム同期</p></div></div>
+        <button id="btnCloseSyncModal" type="button" class="rounded-lg p-1 text-slate-400 hover:text-white hover:bg-slate-800"><i class="ph ph-x text-sm"></i></button>
+      </div>
+      <div class="space-y-3">
+        <div class="rounded-xl bg-slate-950/85 border border-indigo-500/30 p-3 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-semibold text-indigo-200 flex items-center gap-1.5">
+              <i class="ph ph-key text-amber-300 text-sm"></i>
+              <span>招待コード認証コントロール</span>
+            </span>
+            <span id="inviteAuthBadge" class="rounded-full px-2 py-0.5 text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">認証済み</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input id="inviteCodeInput" type="password" autocomplete="off" placeholder="招待コードを入力 (例: ASTRAL-INVITE-2026)" class="flex-1 min-w-0 rounded-xl bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-400">
+            <button id="btnToggleInviteVisibility" type="button" title="招待コードの表示切替" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-1.5 text-slate-300 transition shrink-0">
+              <i id="inviteVisibilityIcon" class="ph ph-eye text-sm"></i>
+            </button>
+            <button id="btnVerifyInviteCode" type="button" class="rounded-xl bg-indigo-500 hover:bg-indigo-400 px-2.5 py-1.5 font-semibold text-white transition shrink-0">認証</button>
+            <button id="btnUpdateCustomInviteCode" type="button" title="入力した文字列をカスタム招待コード（SHA-256）として設定" class="rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 px-2.5 py-1.5 font-semibold text-amber-200 transition shrink-0">コード設定</button>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400">
+            <span id="inviteAuthStatusText">テスト用コード: ASTRAL-INVITE-2026（初期認証済み）</span>
+            <div class="flex items-center gap-2">
+              <button id="btnFillDefaultInvite" type="button" class="text-sky-300 hover:underline">既定コード入力</button>
+              <button id="btnResetInviteAuth" type="button" class="text-rose-300 hover:underline">初期コードに戻す</button>
+              <button id="btnModalLockInvite" type="button" class="text-amber-300 hover:underline">ロック</button>
+            </div>
+          </div>
+          <div class="rounded-lg bg-slate-900/90 border border-slate-800/90 px-2.5 py-1.5 text-[10px] text-slate-400 flex flex-wrap items-center justify-between gap-1">
+            <span>リモート同期ゲート:</span>
+            <span id="syncGatePolicyText" class="font-mono text-emerald-300">許可（認証済み・未認証時は通信遮断）</span>
+          </div>
+        </div>
+        <div><label class="block text-[11px] text-slate-400 mb-1">Supabase Project URL</label><input id="syncSupabaseUrl" type="url" placeholder="https://zdyegofffljtpplbfbpr.supabase.co" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-400"></div>
+        <div><label class="block text-[11px] text-slate-400 mb-1">Supabase Anon Key</label><input id="syncSupabaseKey" type="password" placeholder="eyJhbGciOi..." class="w-full rounded-xl bg-slate-950 border border-slate-700 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-400"></div>
+        <div class="grid grid-cols-2 gap-2.5">
+          <div><label class="block text-[11px] text-slate-400 mb-1">テーブル名</label><input id="syncTableName" type="text" value="astral_ocean_rooms" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-400"></div>
+          <div><label class="block text-[11px] text-slate-400 mb-1">ワークスペース / ルームID</label><input id="syncRoomId" type="text" value="astral-main-room" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-400"></div>
+        </div>
+        <div class="rounded-xl bg-slate-950/75 border border-slate-800 p-2.5 text-[10px] text-slate-400 space-y-1.5">
+          <div class="flex items-center justify-between"><span>同期ステータス:</span><span id="syncModalStatusText" class="font-mono text-slate-300">接続待機中</span></div>
+          <div class="flex items-center justify-between pt-0.5">
+            <span>GitHub Pages 公開 URL / 設定コピー:</span>
+            <button id="btnCopyPagesConfig" type="button" class="rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-0.5 text-[9px] text-sky-200 transition">Pages設定コピー</button>
+          </div>
+          <div id="githubPagesHintText" class="rounded-lg bg-slate-900/70 border border-slate-800/80 px-2 py-1 font-mono text-[9px] text-slate-300 break-all">
+            Project: zdyegofffljtpplbfbpr | Table: astral_ocean_rooms | Room: astral-main-room
+          </div>
+          <div class="flex items-center justify-between pt-0.5">
+            <span>テーブル作成SQL（初回のみ SQL Editor で実行）:</span>
+            <button id="btnCopySyncSql" type="button" class="rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2 py-0.5 text-[9px] text-indigo-200 transition">SQLコピー</button>
+          </div>
+          <pre id="syncSqlSnippet" class="overflow-x-auto rounded-lg bg-slate-900/90 border border-slate-800 p-2 text-[9px] text-indigo-300 select-all">create table if not exists astral_ocean_rooms (
+  room_id text primary key,
+  payload jsonb not null,
+  updated_at timestamptz default now()
+);
+alter table astral_ocean_rooms disable row level security;</pre>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
+        <button id="btnSyncNow" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-2 text-slate-200 transition flex items-center gap-1"><i class="ph ph-arrows-clockwise text-xs text-indigo-300"></i><span>今すぐ同期</span></button>
+        <div class="flex items-center gap-2">
+          <button id="btnDisconnectSync" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-2 text-slate-400 transition">切断</button>
+          <button id="btnConnectSync" type="button" class="rounded-xl bg-indigo-500 hover:bg-indigo-400 px-4 py-2 font-semibold text-white transition">接続して同期開始</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ブラックホール消去確認モーダル -->
+  <div id="blackHoleModal" class="hidden pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="w-full max-w-sm rounded-2xl bg-slate-900 border border-rose-500/40 shadow-2xl p-5 space-y-4 text-xs">
+      <div class="flex items-center gap-2.5 text-rose-300">
+        <div class="h-9 w-9 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center"><i class="ph ph-warning-circle text-xl"></i></div>
+        <div><h3 class="text-sm font-bold text-slate-100">ブラックホール消去確認</h3><p id="blackHoleTargetName" class="text-[11px] text-slate-400 truncate"></p></div>
+      </div>
+      <p id="blackHoleDescription" class="text-slate-300 leading-relaxed"></p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="btnCancelBlackHole" type="button" class="rounded-xl bg-slate-800 hover:bg-slate-700 px-3.5 py-2 text-slate-300 transition">中止</button>
+        <button id="btnConfirmBlackHole" type="button" class="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2 font-semibold text-white transition">消去する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ドキュメントエディタモーダル -->
+  <div id="astralDocModal" class="hidden pointer-events-none fixed inset-0 z-50 flex flex-col bg-slate-950/90 backdrop-blur-md p-3 sm:p-5 text-xs">
+    <div class="mx-auto w-full max-w-4xl flex-1 flex flex-col rounded-2xl bg-slate-900 border border-slate-700/80 shadow-2xl overflow-hidden">
+      <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-slate-800 bg-slate-900/95">
+        <div class="flex items-center gap-2.5 min-w-0"><i class="ph ph-file-text text-sky-400 text-lg shrink-0"></i><div class="min-w-0"><div id="docModalTitle" class="text-sm font-bold text-slate-100 truncate">ドキュメント</div><div id="docModalSubtitle" class="text-[11px] text-slate-400 truncate">所属恒星: 太陽（Sol）</div></div></div>
+        <div class="flex items-center gap-2"><span id="docSaveIndicator" class="text-[11px] text-emerald-400 font-mono">保存中...</span><button id="btnSaveAndCloseDoc" type="button" class="rounded-xl bg-sky-500 hover:bg-sky-400 px-3.5 py-1.5 font-semibold text-slate-950 transition">保存して閉じる</button></div>
+      </div>
+      <div class="flex flex-wrap items-center gap-1 px-4 py-2 border-b border-slate-800/90 bg-slate-950/60">
+        <button type="button" data-doc-cmd="bold" class="doc-cmd-btn rounded-lg px-2 py-1 hover:bg-slate-800 text-slate-200 font-bold" title="太字">B</button>
+        <button type="button" data-doc-cmd="italic" class="doc-cmd-btn rounded-lg px-2 py-1 hover:bg-slate-800 text-slate-200 italic" title="斜体">I</button>
+        <button type="button" data-doc-cmd="underline" class="doc-cmd-btn rounded-lg px-2 py-1 hover:bg-slate-800 text-slate-200 underline" title="下線">U</button>
+        <div class="h-4 w-px bg-slate-800 mx-1"></div>
+        <button type="button" data-doc-block="H1" class="doc-cmd-btn rounded-lg px-2 py-1 hover:bg-slate-800 text-slate-200 font-semibold">H1</button>
+        <button type="button" data-doc-block="H2" class="doc-cmd-btn rounded-lg px-2 py-1 hover:bg-slate-800 text-slate-200 font-semibold">H2</button>
+        <button type="button" data-doc-block="P" class="doc-cmd-btn rounded-lg px-2 py-1 hover:bg-slate-800 text-slate-300">本文</button>
+        <div class="h-4 w-px bg-slate-800 mx-1"></div>
+        <button type="button" data-doc-cmd="insertUnorderedList" class="doc-cmd-btn rounded-lg px-2 py-1 hover:bg-slate-800 text-slate-200" title="箇条書き"><i class="ph ph-list-bullets text-sm"></i></button>
+        <button type="button" data-doc-block="BLOCKQUOTE" class="doc-cmd-btn rounded-lg px-2 py-1 hover:bg-slate-800 text-slate-200" title="引用"><i class="ph ph-quotes text-sm"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-950/50">
+        <div id="astralDocEditor" contenteditable="true" class="mx-auto max-w-3xl rounded-2xl bg-slate-900/90 border border-slate-800 p-6 sm:p-8 text-sm text-slate-200 shadow-inner"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. ストレージキー・招待認証（SHA-256 + 決定論的フォールバック）・Supabase初期値
+      // =========================================================================
+      const STORAGE_KEYS = {
+        STATE: 'astral_ocean_state_v1',
+        SYNC_CONFIG: 'astral_ocean_sync_config_v1',
+        INVITE_AUTH: 'astral_ocean_invite_auth_v1'
+      };
+
+      const INVITE_CODE_PLAIN = 'ASTRAL-INVITE-2026';
+
+      /**
+       * UTF-8文字列を安全にBase64エンコードするヘルパー（日本語・特殊文字対応）
+       * @param {string} str
+       * @returns {string}
+       */
+      function utf8ToBase64(str) {
+        const s = String(str ?? '');
+        try {
+          if (typeof TextEncoder !== 'undefined') {
+            const bytes = new TextEncoder().encode(s);
+            let bin = '';
+            const chunkSize = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              const slice = bytes.subarray(i, i + chunkSize);
+              bin += String.fromCharCode.apply(null, slice);
+            }
+            return btoa(bin);
+          }
+        } catch (err) {
+          // フォールバックへ進む
+        }
+        return btoa(unescape(encodeURIComponent(s)));
+      }
+
+      /**
+       * Web Crypto API 非対応環境向けの決定論的256bit相当ハッシュ生成
+       * @param {string} input
+       * @returns {string} 64桁の16進数文字列
+       */
+      function deterministicFallbackHashHex(input) {
+        const str = String(input || '');
+        const seeds = [0x811c9dc5, 0x01000193, 0x9e3779b9, 0x85ebca6b, 0xc2b2ae35, 0x27d4eb2f, 0x165667b1, 0xd3a2646c];
+        let hex = '';
+        for (let block = 0; block < 8; block++) {
+          let h = seeds[block] >>> 0;
+          for (let i = 0; i < str.length; i++) {
+            const ch = str.charCodeAt(i) + block * 131 + i * 17;
+            h ^= ch & 0xff;
+            h = Math.imul(h, 0x01000193) >>> 0;
+            h ^= (ch >>> 8) & 0xff;
+            h = Math.imul(h, 0x85ebca6b) >>> 0;
+            h ^= h >>> 13;
+          }
+          hex += (h >>> 0).toString(16).padStart(8, '0');
+        }
+        return hex;
+      }
+
+      /**
+       * 大文字・小文字および前後空白を正規化した招待コードのSHA-256ハッシュを計算
+       * @param {string} plainCode
+       * @returns {Promise<string>}
+       */
+      async function computeInviteHashHex(plainCode) {
+        const normalized = String(plainCode || '').trim().toUpperCase();
+        if (!normalized) return '';
+        try {
+          if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle && typeof TextEncoder !== 'undefined') {
+            const bytes = new TextEncoder().encode(normalized);
+            const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+            const arr = Array.from(new Uint8Array(digest));
+            return arr.map((b) => b.toString(16).padStart(2, '0')).join('');
+          }
+        } catch (err) {
+          // crypto.subtle 非対応環境では決定論的フォールバックへ移行
+        }
+        return deterministicFallbackHashHex(normalized);
+      }
+
+      let EXPECTED_INVITE_HASH_HEX = deterministicFallbackHashHex(INVITE_CODE_PLAIN.trim().toUpperCase());
+      const expectedHashReadyPromise = (async () => {
+        const computed = await computeInviteHashHex(INVITE_CODE_PLAIN);
+        if (computed) {
+          EXPECTED_INVITE_HASH_HEX = computed;
+        }
+        return EXPECTED_INVITE_HASH_HEX;
+      })();
+
+      // DEFAULT_SUPABASE_CONFIG: Default connection settings for Astral Ocean shared room
+      const DEFAULT_SUPABASE_CONFIG = {
+        enabled: true,
+        url: 'https://zdyegofffljtpplbfbpr.supabase.co',
+        anonKey: 'sb_publishable_sn8spfNt0po5v3y1UNgN0g_cwLNSzq6',
+        table: 'astral_ocean_rooms',
+        roomId: 'astral-main-room'
+      };
+
+      function normalizeSupabaseUrl(rawUrl) {
+        const trimmed = String(rawUrl || '').trim().replace(/\/+$/, '');
+        if (!trimmed) return '';
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        if (/^[a-z0-9-]+$/i.test(trimmed)) {
+          return `https://${trimmed}.supabase.co`;
+        }
+        return `https://${trimmed}`;
+      }
+
+      const BASE_DISTANCE = 420;
+
+      // =========================================================================
+      // 2. Null安全DOMヘルパー・ユーティリティ・太陽系初期状態・正規化
+      // =========================================================================
+      const $ = (id) => {
+        try {
+          return document.getElementById(id) || null;
+        } catch (err) {
+          return null;
+        }
+      };
+
+      function onEl(el, eventName, handler, options) {
+        if (!el || typeof el.addEventListener !== 'function' || typeof handler !== 'function') return;
+        el.addEventListener(eventName, handler, options);
+      }
+
+      function setModalVisibility(modalEl, visible) {
+        if (!modalEl) return;
+        if (visible) {
+          modalEl.classList.remove('hidden', 'pointer-events-none');
+          modalEl.classList.add('pointer-events-auto');
+        } else {
+          modalEl.classList.add('hidden', 'pointer-events-none');
+          modalEl.classList.remove('pointer-events-auto');
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function createDefaultSampleImageDataUrl(label = 'Planet Image', bgHex = '#1e293b', accentHex = '#38bdf8') {
+        const safeLabel = String(label || 'Planet').slice(0, 32);
+        const safeBg = /^#[0-9a-fA-F]{3,8}$/.test(bgHex) ? bgHex : '#1e293b';
+        const safeAccent = /^#[0-9a-fA-F]{3,8}$/.test(accentHex) ? accentHex : '#38bdf8';
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+          <defs>
+            <radialGradient id="g" cx="38%" cy="35%" r="65%">
+              <stop offset="0%" stop-color="#f8fafc"/>
+              <stop offset="30%" stop-color="${safeAccent}"/>
+              <stop offset="100%" stop-color="${safeBg}"/>
+            </radialGradient>
+          </defs>
+          <rect width="800" height="500" fill="#020617"/>
+          <circle cx="400" cy="230" r="120" fill="url(#g)"/>
+          <ellipse cx="400" cy="230" rx="195" ry="44" fill="none" stroke="${safeAccent}" stroke-opacity="0.45" stroke-width="4"/>
+          <text x="400" y="425" fill="#e2e8f0" font-family="sans-serif" font-size="24" text-anchor="middle">${escapeHtml(safeLabel)}</text>
+        </svg>`;
+        try {
+          return `data:image/svg+xml;base64,${utf8ToBase64(svg)}`;
+        } catch (err) {
+          return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        }
+      }
+
+      function normalizePlanetType(planet) {
+        if (!planet || typeof planet !== 'object') return 'document';
+        if (planet.type === 'image') return 'image';
+        if (planet.type === 'video') {
+          return planet.imageUrl && String(planet.imageUrl).trim() ? 'image' : 'document';
+        }
+        return 'document';
+      }
+
+      function normalizePlanetsList(planets) {
+        if (!Array.isArray(planets)) return [];
+        return planets.map((p) => {
+          const nextType = normalizePlanetType(p);
+          const cleaned = {
+            ...p,
+            type: nextType
+          };
+          delete cleaned.videoUrl;
+          delete cleaned.videoDuration;
+          if (nextType === 'image' && !cleaned.imageUrl) {
+            cleaned.imageUrl = createDefaultSampleImageDataUrl(cleaned.name || 'Image', '#1e1b4b', '#ec4899');
+          }
+          return cleaned;
+        });
+      }
+
+      function createInitialState() {
+        const now = Date.now();
+        return {
+          viewMode: '3d',
+          orbitPaused: false,
+          orbitSpeed: 0.5,
+          cameraDistance: BASE_DISTANCE,
+          selectedKind: 'star',
+          selectedId: 'star-sun',
+          lockedTarget: null,
+          explorerTab: 'tree',
+          typeFilter: 'all',
+          collapsedStarIds: [],
+          expandedPlanetIds: ['planet-earth'],
+          stars: [
+            {
+              id: 'star-sun',
+              name: '太陽（Sol）',
+              color: '#fbbf24',
+              radius: 16,
+              position: { x: 0, y: 0, z: 0 },
+              orbitSpeedMultiplier: 1.0,
+              note: '太陽系の中心恒星。8つの主要惑星（ファイル）が公転しています。'
+            }
+          ],
+          planets: [
+            {
+              id: 'planet-mercury',
+              starId: 'star-sun',
+              name: '水星 — クイックメモ.md',
+              type: 'document',
+              color: '#9ca3af',
+              radius: 2.2,
+              orbitRadius: 30,
+              orbitSpeed: 0.48,
+              orbitAngle: 0.4,
+              inclination: 0.03,
+              contentHtml: '<h1>水星 — クイックメモ</h1><p>太陽に最も近い内惑星。短いアイデアや日々のタスクリストを整理する軌道です。</p>',
+              imageUrl: '',
+              updatedAt: now
+            },
+            {
+              id: 'planet-venus',
+              starId: 'star-sun',
+              name: '金星 — デザイン仕様書.md',
+              type: 'document',
+              color: '#f59e0b',
+              radius: 3.3,
+              orbitRadius: 44,
+              orbitSpeed: 0.36,
+              orbitAngle: 1.6,
+              inclination: 0.02,
+              contentHtml: '<h1>金星 — デザイン仕様書</h1><p>厚い大気に包まれた明けの明星。UI設計やカラーパレットのドキュメントを保管します。</p>',
+              imageUrl: '',
+              updatedAt: now
+            },
+            {
+              id: 'planet-earth',
+              starId: 'star-sun',
+              name: '地球 — プロジェクト計画.md',
+              type: 'document',
+              color: '#38bdf8',
+              radius: 3.6,
+              orbitRadius: 62,
+              orbitSpeed: 0.28,
+              orbitAngle: 2.7,
+              inclination: 0.01,
+              contentHtml: '<h1>地球 — プロジェクト計画</h1><p>生命と水の惑星。中核となるロードマップ・議事録・仕様ドキュメントの中心拠点です。</p><ul><li>3D / 2D 空間ビューポート切替</li><li>Supabase リアルタイム同期対応</li></ul>',
+              imageUrl: '',
+              updatedAt: now
+            },
+            {
+              id: 'planet-mars',
+              starId: 'star-sun',
+              name: '火星 — 探査ログ.md',
+              type: 'document',
+              color: '#ef4444',
+              radius: 2.8,
+              orbitRadius: 80,
+              orbitSpeed: 0.22,
+              orbitAngle: 3.9,
+              inclination: 0.02,
+              contentHtml: '<h1>火星 — 探査ログ</h1><p>赤い惑星。実験的プロトタイプや検証記録をまとめるアーカイブです。</p>',
+              imageUrl: '',
+              updatedAt: now
+            },
+            {
+              id: 'planet-jupiter',
+              starId: 'star-sun',
+              name: '木星 — 大規模データ図鑑.png',
+              type: 'image',
+              color: '#d97706',
+              radius: 7.4,
+              orbitRadius: 112,
+              orbitSpeed: 0.14,
+              orbitAngle: 0.9,
+              inclination: 0.015,
+              contentHtml: '',
+              imageUrl: createDefaultSampleImageDataUrl('Jupiter — ガス巨大惑星', '#451a03', '#f59e0b'),
+              updatedAt: now
+            },
+            {
+              id: 'planet-saturn',
+              starId: 'star-sun',
+              name: '土星 — 環状ギャラリー.png',
+              type: 'image',
+              color: '#eab308',
+              radius: 6.4,
+              orbitRadius: 146,
+              orbitSpeed: 0.11,
+              orbitAngle: 2.2,
+              inclination: 0.025,
+              contentHtml: '',
+              imageUrl: createDefaultSampleImageDataUrl('Saturn — 氷と岩石の環', '#422006', '#fde047'),
+              updatedAt: now
+            },
+            {
+              id: 'planet-uranus',
+              starId: 'star-sun',
+              name: '天王星 — 氷巨星マップ.png',
+              type: 'image',
+              color: '#22d3ee',
+              radius: 4.8,
+              orbitRadius: 178,
+              orbitSpeed: 0.08,
+              orbitAngle: 4.5,
+              inclination: 0.02,
+              contentHtml: '',
+              imageUrl: createDefaultSampleImageDataUrl('Uranus — 氷巨星', '#083344', '#22d3ee'),
+              updatedAt: now
+            },
+            {
+              id: 'planet-neptune',
+              starId: 'star-sun',
+              name: '海王星 — 深宇宙アーカイブ.md',
+              type: 'document',
+              color: '#3b82f6',
+              radius: 4.6,
+              orbitRadius: 208,
+              orbitSpeed: 0.065,
+              orbitAngle: 5.4,
+              inclination: 0.02,
+              contentHtml: '<h1>海王星 — 深宇宙アーカイブ</h1><p>太陽系最外縁の青い惑星。長期保存資料やリファレンスノートを格納します。</p>',
+              imageUrl: '',
+              updatedAt: now
+            }
+          ],
+          updatedAt: now
+        };
+      }
+
+      const els = {
+        viewportContainer: $('viewport-container'),
+        restoreHudFloatingBtn: $('restoreHudFloatingBtn'),
+        toastBanner: $('toastBanner'),
+        toastIcon: $('toastIcon'),
+        toastText: $('toastText'),
+        btnToggleExplorer: $('btnToggleExplorer'),
+        btnMode3D: $('btnMode3D'),
+        btnMode2D: $('btnMode2D'),
+        searchInput: $('searchInput'),
+        btnClearSearch: $('btnClearSearch'),
+        searchDropdown: $('searchDropdown'),
+        btnAddStar: $('btnAddStar'),
+        btnOpenNewPlanetModal: $('btnOpenNewPlanetModal'),
+        localFileInput: $('localFileInput'),
+        btnPauseOrbit: $('btnPauseOrbit'),
+        pauseOrbitIcon: $('pauseOrbitIcon'),
+        speedPresetBtns: Array.from(document.querySelectorAll('.speed-preset-btn')),
+        btnOpenSyncModal: $('btnOpenSyncModal'),
+        syncStatusDot: $('syncStatusDot'),
+        syncStatusLabel: $('syncStatusLabel'),
+        inviteStatusBadge: $('inviteStatusBadge'),
+        btnLockInvite: $('btnLockInvite'),
+        btnToggleInviteVisibility: $('btnToggleInviteVisibility'),
+        inviteVisibilityIcon: $('inviteVisibilityIcon'),
+        btnFillDefaultInvite: $('btnFillDefaultInvite'),
+        btnResetInviteAuth: $('btnResetInviteAuth'),
+        syncGatePolicyText: $('syncGatePolicyText'),
+        btnCopyPagesConfig: $('btnCopyPagesConfig'),
+        githubPagesHintText: $('githubPagesHintText'),
+        inviteLockIcon: $('inviteLockIcon'),
+        inviteLockLabel: $('inviteLockLabel'),
+        inviteAuthBadge: $('inviteAuthBadge'),
+        inviteCodeInput: $('inviteCodeInput'),
+        btnVerifyInviteCode: $('btnVerifyInviteCode'),
+        btnUpdateCustomInviteCode: $('btnUpdateCustomInviteCode'),
+        inviteAuthStatusText: $('inviteAuthStatusText'),
+        btnModalLockInvite: $('btnModalLockInvite'),
+        btnResetView: $('btnResetView'),
+        btnToggleInspector: $('btnToggleInspector'),
+        btnToggleHud: $('btnToggleHud'),
+        explorerPanel: $('explorerPanel'),
+        btnExpandAllPlanets: $('btnExpandAllPlanets'),
+        btnCollapseAllPlanets: $('btnCollapseAllPlanets'),
+        btnCloseExplorer: $('btnCloseExplorer'),
+        tabStarTree: $('tabStarTree'),
+        tabAllFiles: $('tabAllFiles'),
+        typeFilterBtns: Array.from(document.querySelectorAll('.type-filter-btn')),
+        explorerList: $('explorerList'),
+        explorerCounts: $('explorerCounts'),
+        inspectorPanel: $('inspectorPanel'),
+        inspectorHeaderIcon: $('inspectorHeaderIcon'),
+        inspectorHeaderTitle: $('inspectorHeaderTitle'),
+        btnCloseInspector: $('btnCloseInspector'),
+        inspectorContent: $('inspectorContent'),
+        lockStatusText: $('lockStatusText'),
+        btnUnlockCamera: $('btnUnlockCamera'),
+        btnZoomOut: $('btnZoomOut'),
+        cameraZoomRange: $('cameraZoomRange'),
+        btnZoomIn: $('btnZoomIn'),
+        cameraZoomPercent: $('cameraZoomPercent'),
+        btnZoomReset: $('btnZoomReset'),
+        newPlanetModal: $('newPlanetModal'),
+        btnCloseNewPlanetModal: $('btnCloseNewPlanetModal'),
+        newPlanetForm: $('newPlanetForm'),
+        newPlanetName: $('newPlanetName'),
+        newPlanetStar: $('newPlanetStar'),
+        newPlanetType: $('newPlanetType'),
+        newPlanetRadius: $('newPlanetRadius'),
+        newPlanetRadiusValue: $('newPlanetRadiusValue'),
+        newPlanetOrbit: $('newPlanetOrbit'),
+        newPlanetOrbitValue: $('newPlanetOrbitValue'),
+        newPlanetImageSection: $('newPlanetImageSection'),
+        newPlanetImageUrl: $('newPlanetImageUrl'),
+        newPlanetImageFile: $('newPlanetImageFile'),
+        btnPickNewPlanetImageFile: $('btnPickNewPlanetImageFile'),
+        newPlanetImageFileName: $('newPlanetImageFileName'),
+        btnCancelNewPlanet: $('btnCancelNewPlanet'),
+        astralImageViewerModal: $('astralImageViewerModal'),
+        imageViewerTitle: $('imageViewerTitle'),
+        imageViewerSubtitle: $('imageViewerSubtitle'),
+        btnViewerZoomOut: $('btnViewerZoomOut'),
+        imageViewerZoomLabel: $('imageViewerZoomLabel'),
+        btnViewerZoomIn: $('btnViewerZoomIn'),
+        btnViewerFit: $('btnViewerFit'),
+        btnViewerReset: $('btnViewerReset'),
+        btnViewerRotate: $('btnViewerRotate'),
+        btnCloseImageViewer: $('btnCloseImageViewer'),
+        imageViewerImg: $('imageViewerImg'),
+        imageViewerError: $('imageViewerError'),
+        imageViewerUrlInput: $('imageViewerUrlInput'),
+        btnApplyViewerUrl: $('btnApplyViewerUrl'),
+        imageViewerFileInput: $('imageViewerFileInput'),
+        btnUploadViewerFile: $('btnUploadViewerFile'),
+        supabaseSyncModal: $('supabaseSyncModal'),
+        btnCloseSyncModal: $('btnCloseSyncModal'),
+        syncSupabaseUrl: $('syncSupabaseUrl'),
+        syncSupabaseKey: $('syncSupabaseKey'),
+        syncTableName: $('syncTableName'),
+        syncRoomId: $('syncRoomId'),
+        syncModalStatusText: $('syncModalStatusText'),
+        btnCopySyncSql: $('btnCopySyncSql'),
+        syncSqlSnippet: $('syncSqlSnippet'),
+        btnSyncNow: $('btnSyncNow'),
+        btnDisconnectSync: $('btnDisconnectSync'),
+        btnConnectSync: $('btnConnectSync'),
+        blackHoleModal: $('blackHoleModal'),
+        blackHoleTargetName: $('blackHoleTargetName'),
+        blackHoleDescription: $('blackHoleDescription'),
+        btnCancelBlackHole: $('btnCancelBlackHole'),
+        btnConfirmBlackHole: $('btnConfirmBlackHole'),
+        astralDocModal: $('astralDocModal'),
+        docModalTitle: $('docModalTitle'),
+        docModalSubtitle: $('docModalSubtitle'),
+        docSaveIndicator: $('docSaveIndicator'),
+        btnSaveAndCloseDoc: $('btnSaveAndCloseDoc'),
+        docCmdBtns: Array.from(document.querySelectorAll('.doc-cmd-btn')),
+        astralDocEditor: $('astralDocEditor')
+      };
+
+      let toastTimerId = null;
+      function showToast(message, iconClass = 'ph-info') {
+        if (!els.toastBanner || !els.toastText) return;
+        els.toastText.textContent = String(message || '');
+        if (els.toastIcon) {
+          els.toastIcon.className = `ph ${iconClass} text-sky-400 text-sm`;
+        }
+        els.toastBanner.classList.remove('opacity-0', 'translate-y-2');
+        els.toastBanner.classList.add('opacity-100', 'translate-y-0');
+        if (toastTimerId) clearTimeout(toastTimerId);
+        toastTimerId = setTimeout(() => {
+          if (!els.toastBanner) return;
+          els.toastBanner.classList.add('opacity-0', 'translate-y-2');
+          els.toastBanner.classList.remove('opacity-100', 'translate-y-0');
+        }, 2600);
+      }
+
+      // =========================================================================
+      // 3. ローカル保存・招待コード認証・Supabase 同期エンジン
+      // =========================================================================
+      function loadStateFromLocalStorage() {
+        const fallback = createInitialState();
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.STATE);
+          if (!raw) return fallback;
+          const parsed = JSON.parse(raw);
+          if (!parsed || !Array.isArray(parsed.stars) || parsed.stars.length === 0 || !Array.isArray(parsed.planets)) {
+            return fallback;
+          }
+          const validFilters = new Set(['all', 'document', 'image']);
+          return {
+            ...fallback,
+            ...parsed,
+            typeFilter: validFilters.has(parsed.typeFilter) ? parsed.typeFilter : 'all',
+            collapsedStarIds: Array.isArray(parsed.collapsedStarIds) ? parsed.collapsedStarIds : [],
+            expandedPlanetIds: Array.isArray(parsed.expandedPlanetIds) ? parsed.expandedPlanetIds : [],
+            planets: normalizePlanetsList(parsed.planets)
+          };
+        } catch (err) {
+          return fallback;
+        }
+      }
+
+      function loadSyncConfigFromLocalStorage() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.SYNC_CONFIG);
+          if (!raw) return { ...DEFAULT_SUPABASE_CONFIG };
+          const parsed = JSON.parse(raw);
+          const url = normalizeSupabaseUrl(parsed && parsed.url ? parsed.url : DEFAULT_SUPABASE_CONFIG.url);
+          const anonKey = (parsed && parsed.anonKey) ? String(parsed.anonKey).trim() : DEFAULT_SUPABASE_CONFIG.anonKey;
+          return {
+            enabled: parsed && typeof parsed.enabled === 'boolean' ? parsed.enabled : Boolean(url && anonKey),
+            url: url || DEFAULT_SUPABASE_CONFIG.url,
+            anonKey: anonKey || DEFAULT_SUPABASE_CONFIG.anonKey,
+            table: (parsed && parsed.table) ? String(parsed.table).trim() : DEFAULT_SUPABASE_CONFIG.table,
+            roomId: (parsed && parsed.roomId) ? String(parsed.roomId).trim() : DEFAULT_SUPABASE_CONFIG.roomId
+          };
+        } catch (err) {
+          return { ...DEFAULT_SUPABASE_CONFIG };
+        }
+      }
+
+      function saveSyncConfigToLocalStorage() {
+        try {
+          localStorage.setItem(STORAGE_KEYS.SYNC_CONFIG, JSON.stringify(appState.syncConfig));
+        } catch (err) {
+          // ストレージ容量超過時は無視
+        }
+      }
+
+      function loadInviteAuthFromLocalStorage() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.INVITE_AUTH);
+          if (!raw) {
+            return {
+              authenticated: true,
+              codeHint: INVITE_CODE_PLAIN,
+              customHashHex: '',
+              verifiedAt: Date.now()
+            };
+          }
+          const parsed = JSON.parse(raw);
+          return {
+            authenticated: Boolean(parsed && parsed.authenticated),
+            codeHint: (parsed && typeof parsed.codeHint === 'string') ? parsed.codeHint : INVITE_CODE_PLAIN,
+            customHashHex: (parsed && typeof parsed.customHashHex === 'string') ? parsed.customHashHex : '',
+            verifiedAt: Number((parsed && parsed.verifiedAt) || 0)
+          };
+        } catch (err) {
+          return {
+            authenticated: true,
+            codeHint: INVITE_CODE_PLAIN,
+            customHashHex: '',
+            verifiedAt: Date.now()
+          };
+        }
+      }
+
+      const appState = {
+        data: loadStateFromLocalStorage(),
+        syncConfig: loadSyncConfigFromLocalStorage(),
+        inviteAuth: loadInviteAuthFromLocalStorage(),
+        hudHidden: false,
+        searchQuery: '',
+        draggedPlanetId: null,
+        blackHoleTarget: null,
+        activeDocPlanetId: null,
+        activeImagePlanetId: null,
+        docAutoSaveTimerId: null,
+        syncTimerId: null,
+        isSyncing: false,
+        lastSyncedRemoteTs: 0,
+        imageViewer: {
+          scale: 1,
+          rotation: 0
+        }
+      };
+
+      function isInviteAuthenticated() {
+        return Boolean(appState.inviteAuth && appState.inviteAuth.authenticated);
+      }
+
+      async function getActiveExpectedInviteHashHex() {
+        await expectedHashReadyPromise;
+        const customHash = appState.inviteAuth && typeof appState.inviteAuth.customHashHex === 'string'
+          ? appState.inviteAuth.customHashHex.trim()
+          : '';
+        if (customHash) {
+          return customHash;
+        }
+        return EXPECTED_INVITE_HASH_HEX || deterministicFallbackHashHex(INVITE_CODE_PLAIN.trim().toUpperCase());
+      }
+
+      function saveInviteAuthToLocalStorage() {
+        try {
+          localStorage.setItem(STORAGE_KEYS.INVITE_AUTH, JSON.stringify(appState.inviteAuth));
+        } catch (err) {
+          // ストレージ容量超過時は無視
+        }
+      }
+
+      function updateSyncStatusUI(labelText, dotClass) {
+        if (labelText) {
+          if (els.syncStatusLabel) els.syncStatusLabel.textContent = labelText;
+          if (els.syncModalStatusText) els.syncModalStatusText.textContent = labelText;
+        }
+        if (dotClass && els.syncStatusDot) {
+          els.syncStatusDot.className = `h-2 w-2 rounded-full ${dotClass}`;
+        }
+      }
+
+      function updateInviteAuthUI() {
+        const authed = isInviteAuthenticated();
+        const roomLabel = (appState.syncConfig && appState.syncConfig.roomId) || 'astral-main-room';
+        const tableLabel = (appState.syncConfig && appState.syncConfig.table) || 'astral_ocean_rooms';
+        const urlLabel = (appState.syncConfig && appState.syncConfig.url) || DEFAULT_SUPABASE_CONFIG.url;
+        const hasCustomCode = Boolean(appState.inviteAuth && appState.inviteAuth.customHashHex);
+        const activeHint = hasCustomCode
+          ? ((appState.inviteAuth && appState.inviteAuth.codeHint) || 'カスタムコード設定済み')
+          : INVITE_CODE_PLAIN;
+
+        if (els.inviteLockIcon) {
+          els.inviteLockIcon.className = authed ? 'ph ph-lock-open text-sm text-emerald-300' : 'ph ph-lock text-sm text-rose-400';
+        }
+        if (els.inviteLockLabel) {
+          els.inviteLockLabel.textContent = authed ? '招待ロック' : '要招待認証';
+        }
+        if (els.inviteStatusBadge) {
+          if (authed) {
+            els.inviteStatusBadge.className = 'hidden sm:inline-flex items-center gap-1 rounded-xl bg-emerald-500/15 border border-emerald-400/35 px-2 py-1 text-[10px] font-mono text-emerald-300';
+            els.inviteStatusBadge.textContent = hasCustomCode ? '認証済み(カスタム)' : '認証済み';
+          } else {
+            els.inviteStatusBadge.className = 'hidden sm:inline-flex items-center gap-1 rounded-xl bg-rose-500/15 border border-rose-400/35 px-2 py-1 text-[10px] font-mono text-rose-300';
+            els.inviteStatusBadge.textContent = '未認証';
+          }
+        }
+        if (els.inviteAuthBadge) {
+          if (authed) {
+            els.inviteAuthBadge.className = 'rounded-full px-2 py-0.5 text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
+            els.inviteAuthBadge.textContent = hasCustomCode ? '認証済み(カスタム)' : '認証済み';
+          } else {
+            els.inviteAuthBadge.className = 'rounded-full px-2 py-0.5 text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-400/40';
+            els.inviteAuthBadge.textContent = '未認証（同期停止）';
+          }
+        }
+        if (els.inviteAuthStatusText) {
+          if (authed) {
+            els.inviteAuthStatusText.textContent = hasCustomCode
+              ? `カスタム認証コード有効（表示: ${activeHint} / ルーム: ${roomLabel}）`
+              : `招待コード認証済み（既定: ${INVITE_CODE_PLAIN} / ルーム: ${roomLabel}）`;
+          } else {
+            els.inviteAuthStatusText.textContent = hasCustomCode
+              ? '未認証です。設定したカスタム招待コードを入力して認証してください'
+              : `未認証です。コード「${INVITE_CODE_PLAIN}」を入力して認証してください`;
+          }
+        }
+        if (els.syncGatePolicyText) {
+          if (authed) {
+            els.syncGatePolicyText.className = 'font-mono text-emerald-300';
+            els.syncGatePolicyText.textContent = `許可（ルーム ${roomLabel} 送受信有効）`;
+          } else {
+            els.syncGatePolicyText.className = 'font-mono text-rose-300';
+            els.syncGatePolicyText.textContent = '遮断中（未認証のため Pull / Push 停止）';
+          }
+        }
+        if (els.githubPagesHintText) {
+          const pagesOrigin = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null'
+            ? window.location.origin
+            : 'https://<user>.github.io/<repo>/';
+          els.githubPagesHintText.textContent = `Pages: ${pagesOrigin} | URL: ${urlLabel} | Table: ${tableLabel} | Room: ${roomLabel}`;
+        }
+
+        if (!authed) {
+          updateSyncStatusUI('招待未認証（ローカルのみ）', 'bg-rose-500');
+        } else if (appState.syncConfig && appState.syncConfig.enabled) {
+          updateSyncStatusUI(
+            appState.isSyncing ? '同期中...' : 'Supabase同期済み',
+            appState.isSyncing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400 shadow-[0_0_8px_#34d399]'
+          );
+        } else {
+          updateSyncStatusUI('ローカル保存（未接続）', 'bg-slate-500');
+        }
+      }
+
+      async function setCustomInviteCode(rawCode, showFeedback = true) {
+        const normalizedCode = String(rawCode || '').trim().toUpperCase();
+        if (normalizedCode.length < 4) {
+          if (showFeedback) {
+            showToast('招待コードは4文字以上で入力してください', 'ph-warning');
+          }
+          return false;
+        }
+        const hashHex = await computeInviteHashHex(normalizedCode);
+        if (!hashHex) {
+          if (showFeedback) {
+            showToast('招待コードのハッシュ化に失敗しました', 'ph-warning');
+          }
+          return false;
+        }
+        appState.inviteAuth = {
+          authenticated: true,
+          codeHint: normalizedCode,
+          customHashHex: hashHex,
+          verifiedAt: Date.now()
+        };
+        saveInviteAuthToLocalStorage();
+        if (els.inviteCodeInput) {
+          els.inviteCodeInput.value = normalizedCode;
+        }
+        updateInviteAuthUI();
+        if (appState.syncConfig && appState.syncConfig.enabled) {
+          startSyncLoop();
+        }
+        if (showFeedback) {
+          showToast(`新しい招待コード「${normalizedCode}」を設定・認証しました`, 'ph-key');
+        }
+        return true;
+      }
+
+      async function verifyAndAuthenticateInviteCode(rawCode, showFeedback = true) {
+        const normalizedCode = String(rawCode || '').trim().toUpperCase();
+        if (!normalizedCode) {
+          if (showFeedback) showToast('招待コードを入力してください', 'ph-warning');
+          return false;
+        }
+        const expected = await getActiveExpectedInviteHashHex();
+        const actual = await computeInviteHashHex(normalizedCode);
+        if (actual && actual === expected) {
+          const prevCustomHash = (appState.inviteAuth && appState.inviteAuth.customHashHex) || '';
+          appState.inviteAuth = {
+            authenticated: true,
+            codeHint: normalizedCode,
+            customHashHex: prevCustomHash,
+            verifiedAt: Date.now()
+          };
+          saveInviteAuthToLocalStorage();
+          updateInviteAuthUI();
+          if (appState.syncConfig && appState.syncConfig.enabled) {
+            startSyncLoop();
+            await pullStateFromSupabase(false);
+          }
+          if (showFeedback) {
+            showToast('招待コード認証に成功しました。共有ルーム同期を有効化しました', 'ph-key');
+          }
+          return true;
+        }
+        if (showFeedback) {
+          showToast('招待コードが一致しません。入力内容を確認してください', 'ph-warning');
+        }
+        return false;
+      }
+
+      function lockInviteAuthentication(showFeedback = true) {
+        stopSyncLoop();
+        appState.isSyncing = false;
+        const prevCustomHash = (appState.inviteAuth && appState.inviteAuth.customHashHex) || '';
+        appState.inviteAuth = {
+          authenticated: false,
+          codeHint: prevCustomHash ? ((appState.inviteAuth && appState.inviteAuth.codeHint) || '') : '',
+          customHashHex: prevCustomHash,
+          verifiedAt: 0
+        };
+        saveInviteAuthToLocalStorage();
+        updateInviteAuthUI();
+        if (showFeedback) {
+          showToast('招待ロックを有効にしました。共有ルーム同期を一時停止しています', 'ph-lock');
+        }
+      }
+
+      function resetInviteAuthenticationToDefault(showFeedback = true) {
+        stopSyncLoop();
+        appState.isSyncing = false;
+        try {
+          localStorage.removeItem(STORAGE_KEYS.INVITE_AUTH);
+        } catch (err) {
+          // ストレージ削除失敗時はメモリ状態で継続
+        }
+        appState.inviteAuth = {
+          authenticated: true,
+          codeHint: INVITE_CODE_PLAIN,
+          customHashHex: '',
+          verifiedAt: Date.now()
+        };
+        saveInviteAuthToLocalStorage();
+        if (els.inviteCodeInput) {
+          els.inviteCodeInput.value = INVITE_CODE_PLAIN;
+        }
+        updateInviteAuthUI();
+        if (appState.syncConfig && appState.syncConfig.enabled) {
+          startSyncLoop();
+        }
+        if (showFeedback) {
+          showToast(`招待コードを初期値（${INVITE_CODE_PLAIN}・認証済み）へ戻しました`, 'ph-arrow-counter-clockwise');
+        }
+      }
+
+      function copyTextWithFallback(text, successMsg, failMsg) {
+        if (!text) return;
+        const tempArea = document.createElement('textarea');
+        tempArea.value = text;
+        tempArea.style.position = 'fixed';
+        tempArea.style.opacity = '0';
+        document.body.appendChild(tempArea);
+        tempArea.select();
+        try {
+          document.execCommand('copy');
+          showToast(successMsg, 'ph-copy');
+        } catch (err) {
+          showToast(failMsg, 'ph-warning');
+        } finally {
+          document.body.removeChild(tempArea);
+        }
+      }
+
+      function saveStateToLocalStorage(triggerCloudSync = true) {
+        appState.data.updatedAt = Date.now();
+        try {
+          localStorage.setItem(STORAGE_KEYS.STATE, JSON.stringify(appState.data));
+        } catch (err) {
+          // ストレージ容量超過時は無視
+        }
+        if (triggerCloudSync && appState.syncConfig && appState.syncConfig.enabled && isInviteAuthenticated()) {
+          pushStateToSupabase(false);
+        }
+      }
+
+      function buildSupabaseHeaders(apiKey, extra = {}) {
+        const key = String(apiKey || '').trim();
+        const headers = {
+          'apikey': key,
+          ...extra
+        };
+        if (/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(key)) {
+          headers['Authorization'] = `Bearer ${key}`;
+        }
+        return headers;
+      }
+
+      async function pushStateToSupabase(notify = false) {
+        if (!isInviteAuthenticated()) {
+          stopSyncLoop();
+          appState.isSyncing = false;
+          updateInviteAuthUI();
+          if (notify) showToast('招待コード未認証のためSupabase送信をブロックしました', 'ph-lock');
+          return;
+        }
+        const cfg = appState.syncConfig;
+        if (!cfg || !cfg.enabled || !cfg.url || !cfg.anonKey) return;
+        if (appState.isSyncing) return;
+
+        appState.isSyncing = true;
+        updateSyncStatusUI('送信中...', 'bg-amber-400 animate-pulse');
+        try {
+          const baseUrl = normalizeSupabaseUrl(cfg.url);
+          const table = encodeURIComponent((cfg.table || 'astral_ocean_rooms').trim());
+          const roomId = (cfg.roomId || 'astral-main-room').trim();
+          const ts = Math.max(Number(appState.data.updatedAt || 0), Date.now());
+          appState.data.updatedAt = ts;
+
+          const endpoint = `${baseUrl}/rest/v1/${table}?on_conflict=room_id`;
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: buildSupabaseHeaders(cfg.anonKey, {
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates,return=minimal'
+            }),
+            body: JSON.stringify([
+              {
+                room_id: roomId,
+                payload: appState.data,
+                updated_at: new Date(ts).toISOString()
+              }
+            ])
+          });
+          if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new Error(`HTTP ${res.status}${errText ? `: ${errText.slice(0, 80)}` : ''}`);
+          }
+          appState.lastSyncedRemoteTs = ts;
+          updateSyncStatusUI('Supabase同期済み', 'bg-emerald-400 shadow-[0_0_8px_#34d399]');
+          if (notify) showToast('Supabaseへ星系データを保存しました', 'ph-cloud-arrow-up');
+        } catch (err) {
+          updateSyncStatusUI('同期エラー（テーブル未作成の可能性）', 'bg-rose-500');
+          if (notify) showToast(`Supabase送信失敗: ${err.message}`, 'ph-warning');
+        } finally {
+          appState.isSyncing = false;
+        }
+      }
+
+      async function pullStateFromSupabase(notify = false) {
+        if (!isInviteAuthenticated()) {
+          stopSyncLoop();
+          appState.isSyncing = false;
+          updateInviteAuthUI();
+          if (notify) showToast('招待コード未認証のためSupabase同期をブロックしました', 'ph-lock');
+          return;
+        }
+        const cfg = appState.syncConfig;
+        if (!cfg || !cfg.enabled || !cfg.url || !cfg.anonKey) return;
+        if (appState.isSyncing) return;
+
+        appState.isSyncing = true;
+        let shouldPushAfterRelease = false;
+        try {
+          const baseUrl = normalizeSupabaseUrl(cfg.url);
+          const table = encodeURIComponent((cfg.table || 'astral_ocean_rooms').trim());
+          const roomId = encodeURIComponent((cfg.roomId || 'astral-main-room').trim());
+          const endpoint = `${baseUrl}/rest/v1/${table}?room_id=eq.${roomId}&select=payload,updated_at`;
+          const res = await fetch(endpoint, {
+            method: 'GET',
+            headers: buildSupabaseHeaders(cfg.anonKey)
+          });
+          if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new Error(`HTTP ${res.status}${errText ? `: ${errText.slice(0, 80)}` : ''}`);
+          }
+          const rows = await res.json();
+          if (Array.isArray(rows) && rows.length > 0 && rows[0].payload) {
+            const remote = rows[0].payload;
+            const rowUpdatedMs = rows[0].updated_at ? new Date(rows[0].updated_at).getTime() : 0;
+            const remoteTs = Math.max(Number(remote.updatedAt || 0), Number.isFinite(rowUpdatedMs) ? rowUpdatedMs : 0);
+            const localTs = Number(appState.data.updatedAt || 0);
+
+            if (remoteTs > localTs && Array.isArray(remote.stars) && remote.stars.length > 0 && Array.isArray(remote.planets)) {
+              const validFilters = new Set(['all', 'document', 'image']);
+              appState.data = {
+                ...createInitialState(),
+                ...remote,
+                typeFilter: validFilters.has(remote.typeFilter) ? remote.typeFilter : 'all',
+                collapsedStarIds: Array.isArray(remote.collapsedStarIds) ? remote.collapsedStarIds : [],
+                expandedPlanetIds: Array.isArray(remote.expandedPlanetIds) ? remote.expandedPlanetIds : [],
+                planets: normalizePlanetsList(remote.planets),
+                updatedAt: remoteTs
+              };
+              appState.lastSyncedRemoteTs = remoteTs;
+              saveStateToLocalStorage(false);
+              reconcileSelection();
+              rebuild3DScene();
+              renderAllUI();
+              updateSyncStatusUI('Supabase同期済み', 'bg-emerald-400 shadow-[0_0_8px_#34d399]');
+              if (notify) showToast('Supabaseから最新の星系データを取得しました', 'ph-cloud-arrow-down');
+            } else {
+              updateSyncStatusUI('Supabase同期済み', 'bg-emerald-400 shadow-[0_0_8px_#34d399]');
+              if (notify) {
+                shouldPushAfterRelease = true;
+              }
+            }
+          } else if (notify) {
+            shouldPushAfterRelease = true;
+          }
+        } catch (err) {
+          updateSyncStatusUI('同期エラー', 'bg-rose-500');
+          if (notify) showToast(`Supabase同期確認: ${err.message}`, 'ph-warning');
+        } finally {
+          appState.isSyncing = false;
+        }
+
+        if (shouldPushAfterRelease) {
+          await pushStateToSupabase(true);
+        }
+      }
+
+      function stopSyncLoop() {
+        if (appState.syncTimerId) {
+          clearInterval(appState.syncTimerId);
+          appState.syncTimerId = null;
+        }
+      }
+
+      function startSyncLoop() {
+        stopSyncLoop();
+        if (!isInviteAuthenticated()) {
+          updateInviteAuthUI();
+          return;
+        }
+        if (!appState.syncConfig || !appState.syncConfig.enabled) return;
+        pullStateFromSupabase(false);
+        appState.syncTimerId = setInterval(() => {
+          if (!isInviteAuthenticated()) {
+            stopSyncLoop();
+            updateInviteAuthUI();
+            return;
+          }
+          pullStateFromSupabase(false);
+        }, 12000);
+      }
+
+      function openSyncModal() {
+        const cfg = appState.syncConfig || DEFAULT_SUPABASE_CONFIG;
+        if (els.syncSupabaseUrl) els.syncSupabaseUrl.value = cfg.url || '';
+        if (els.syncSupabaseKey) els.syncSupabaseKey.value = cfg.anonKey || '';
+        if (els.syncTableName) els.syncTableName.value = cfg.table || 'astral_ocean_rooms';
+        if (els.syncRoomId) els.syncRoomId.value = cfg.roomId || 'astral-main-room';
+        if (els.inviteCodeInput) {
+          els.inviteCodeInput.value = isInviteAuthenticated()
+            ? ((appState.inviteAuth && appState.inviteAuth.codeHint) || INVITE_CODE_PLAIN)
+            : '';
+        }
+        updateInviteAuthUI();
+        setModalVisibility(els.supabaseSyncModal, true);
+      }
+
+      function closeSyncModal() {
+        setModalVisibility(els.supabaseSyncModal, false);
+      }
+
+      function readSyncFormFields() {
+        const prev = appState.syncConfig || DEFAULT_SUPABASE_CONFIG;
+        const url = normalizeSupabaseUrl(els.syncSupabaseUrl ? els.syncSupabaseUrl.value : prev.url) || prev.url;
+        const anonKey = ((els.syncSupabaseKey && els.syncSupabaseKey.value.trim()) || prev.anonKey || '').trim();
+        const table = ((els.syncTableName && els.syncTableName.value.trim()) || prev.table || 'astral_ocean_rooms').trim();
+        const roomId = ((els.syncRoomId && els.syncRoomId.value.trim()) || prev.roomId || 'astral-main-room').trim();
+        if (els.syncSupabaseUrl) els.syncSupabaseUrl.value = url;
+        return { url, anonKey, table, roomId };
+      }
+
+      // =========================================================================
+      // 4. 空間座標計算 & エンティティ検索ヘルパー
+      // =========================================================================
+      function getStarById(starId) {
+        return appState.data.stars.find((s) => s.id === starId) || null;
+      }
+
+      function getPlanetById(planetId) {
+        return appState.data.planets.find((p) => p.id === planetId) || null;
+      }
+
+      function getPlanetsForStar(starId) {
+        return appState.data.planets.filter((p) => p.starId === starId);
+      }
+
+      function getPlanetWorldPosition(planet, elapsedSeconds = 0) {
+        const star = getStarById(planet.starId) || appState.data.stars[0];
+        const basePos = star && star.position ? star.position : { x: 0, y: 0, z: 0 };
+        const angle =
+          Number(planet.orbitAngle || 0) +
+          elapsedSeconds * Number(planet.orbitSpeed || 0.25) * Number(appState.data.orbitSpeed || 0.5);
+        const r = Number(planet.orbitRadius || 40);
+        const inc = Number(planet.inclination || 0);
+        const x = (basePos.x || 0) + Math.cos(angle) * r;
+        const z = (basePos.z || 0) + Math.sin(angle) * r;
+        const y = (basePos.y || 0) + Math.sin(angle * 1.5) * Math.sin(inc) * r * 0.45;
+        return { x, y, z, angle };
+      }
+
+      function reconcileSelection() {
+        if (appState.data.selectedKind === 'star') {
+          const found = getStarById(appState.data.selectedId);
+          if (!found && appState.data.stars.length > 0) {
+            appState.data.selectedId = appState.data.stars[0].id;
+          }
+        } else if (appState.data.selectedKind === 'planet') {
+          const found = getPlanetById(appState.data.selectedId);
+          if (!found) {
+            appState.data.selectedKind = 'star';
+            appState.data.selectedId = appState.data.stars[0] ? appState.data.stars[0].id : null;
+          }
+        }
+        if (appState.data.lockedTarget) {
+          if (appState.data.lockedTarget.kind === 'star' && !getStarById(appState.data.lockedTarget.id)) {
+            appState.data.lockedTarget = null;
+          } else if (appState.data.lockedTarget.kind === 'planet' && !getPlanetById(appState.data.lockedTarget.id)) {
+            appState.data.lockedTarget = null;
+          }
+        }
+      }
+
+      // =========================================================================
+      // 5. 3D WebGL (Three.js) & 2D Canvas ビューポートエンジン
+      // =========================================================================
+      function isThreeAvailable() {
+        return typeof window.THREE !== 'undefined' && Boolean(window.THREE.WebGLRenderer);
+      }
+
+      const viewport = {
+        scene: null,
+        camera: null,
+        renderer: null,
+        canvas2D: null,
+        ctx2D: null,
+        starMeshes: new Map(),
+        planetMeshes: new Map(),
+        starfield: null,
+        sunLight: null,
+        raycaster: null,
+        pointerNDC: null,
+        cameraTarget: { x: 0, y: 0, z: 0 },
+        cameraSpherical: {
+          radius: BASE_DISTANCE,
+          phi: Math.PI * 0.36,
+          theta: 0.25
+        },
+        pan2D: {
+          x: 0,
+          y: 0
+        },
+        isDragging: false,
+        dragMode: null,
+        dragStart: { x: 0, y: 0 },
+        pointerDownPos: { x: 0, y: 0 },
+        elapsedOrbitTime: 0,
+        lastFrameTime: performance.now(),
+        projectedHitTargets: [],
+        loopStarted: false
+      };
+
+      function ensureThreeSetup() {
+        if (!isThreeAvailable()) return false;
+        if (viewport.renderer && viewport.scene && viewport.camera) return true;
+        try {
+          const width = Math.max(320, (els.viewportContainer && els.viewportContainer.clientWidth) || window.innerWidth || 1024);
+          const height = Math.max(240, (els.viewportContainer && els.viewportContainer.clientHeight) || window.innerHeight || 768);
+
+          viewport.raycaster = new THREE.Raycaster();
+          viewport.pointerNDC = new THREE.Vector2();
+          viewport.scene = new THREE.Scene();
+          viewport.scene.background = new THREE.Color(0x020617);
+          viewport.scene.fog = new THREE.FogExp2(0x020617, 0.00055);
+
+          viewport.camera = new THREE.PerspectiveCamera(50, width / height, 1, 5000);
+          viewport.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'default' });
+          viewport.renderer.setSize(width, height);
+          viewport.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+          if (els.viewportContainer) {
+            els.viewportContainer.appendChild(viewport.renderer.domElement);
+          }
+
+          const ambient = new THREE.AmbientLight(0xe2e8f0, 0.9);
+          viewport.scene.add(ambient);
+
+          const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+          dirLight.position.set(160, 260, 190);
+          viewport.scene.add(dirLight);
+
+          const sunPointLight = new THREE.PointLight(0xfff3c4, 1.9, 1800, 0.5);
+          sunPointLight.position.set(0, 0, 0);
+          viewport.scene.add(sunPointLight);
+          viewport.sunLight = sunPointLight;
+
+          const starCount = 1500;
+          const starGeo = new THREE.BufferGeometry();
+          const starPositions = new Float32Array(starCount * 3);
+          for (let i = 0; i < starCount; i++) {
+            const r = 450 + Math.random() * 1650;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            starPositions[i * 3 + 1] = r * Math.cos(phi);
+            starPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+          }
+          starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+          const starMat = new THREE.PointsMaterial({
+            color: 0xe2e8f0,
+            size: 2.2,
+            transparent: true,
+            opacity: 0.75
+          });
+          viewport.starfield = new THREE.Points(starGeo, starMat);
+          viewport.scene.add(viewport.starfield);
+          return true;
+        } catch (err) {
+          viewport.renderer = null;
+          viewport.scene = null;
+          viewport.camera = null;
+          return false;
+        }
+      }
+
+      function initViewportEngine() {
+        const width = Math.max(320, (els.viewportContainer && els.viewportContainer.clientWidth) || window.innerWidth || 1024);
+        const height = Math.max(240, (els.viewportContainer && els.viewportContainer.clientHeight) || window.innerHeight || 768);
+
+        viewport.canvas2D = document.createElement('canvas');
+        viewport.canvas2D.width = width;
+        viewport.canvas2D.height = height;
+        viewport.canvas2D.style.display = 'none';
+        viewport.ctx2D = viewport.canvas2D.getContext('2d');
+        if (els.viewportContainer) {
+          els.viewportContainer.appendChild(viewport.canvas2D);
+        }
+
+        if (!ensureThreeSetup()) {
+          appState.data.viewMode = '2d';
+        }
+
+        viewport.cameraSpherical.radius = Number(appState.data.cameraDistance || BASE_DISTANCE);
+        syncZoomUI();
+        applyViewModeVisibility();
+        rebuild3DScene();
+        bindViewportEvents();
+        window.addEventListener('resize', handleViewportResize);
+        startRenderLoop();
+      }
+
+      function applyViewModeVisibility() {
+        if (appState.data.viewMode === '3d') {
+          ensureThreeSetup();
+        }
+        const canUse3D = Boolean(viewport.renderer && viewport.scene && viewport.camera);
+        if (!canUse3D && appState.data.viewMode === '3d') {
+          appState.data.viewMode = '2d';
+        }
+        const is3D = appState.data.viewMode === '3d';
+        if (viewport.renderer && viewport.renderer.domElement) {
+          viewport.renderer.domElement.style.display = is3D ? 'block' : 'none';
+        }
+        if (viewport.canvas2D) {
+          viewport.canvas2D.style.display = is3D ? 'none' : 'block';
+        }
+        if (els.btnMode3D && els.btnMode2D) {
+          if (is3D) {
+            els.btnMode3D.className = 'rounded-lg px-2.5 py-1 bg-sky-500/25 text-sky-200 border border-sky-400/40 transition flex items-center gap-1';
+            els.btnMode2D.className = 'rounded-lg px-2.5 py-1 text-slate-400 hover:text-slate-100 transition flex items-center gap-1';
+          } else {
+            els.btnMode2D.className = 'rounded-lg px-2.5 py-1 bg-sky-500/25 text-sky-200 border border-sky-400/40 transition flex items-center gap-1';
+            els.btnMode3D.className = 'rounded-lg px-2.5 py-1 text-slate-400 hover:text-slate-100 transition flex items-center gap-1';
+          }
+        }
+      }
+
+      function createCelestialTexture(kind, baseHex, id) {
+        if (!isThreeAvailable()) return null;
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 256;
+          const ctx = canvas.getContext('2d');
+          const c = new THREE.Color(baseHex || '#38bdf8');
+          const rBase = Math.round(c.r * 255);
+          const gBase = Math.round(c.g * 255);
+          const bBase = Math.round(c.b * 255);
+
+          ctx.fillStyle = `rgb(${rBase}, ${gBase}, ${bBase})`;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          let seed = 1337;
+          for (let i = 0; i < String(id || '').length; i++) {
+            seed = (seed * 31 + String(id).charCodeAt(i)) % 2147483647;
+          }
+          const rand = () => {
+            seed = (seed * 16807) % 2147483647;
+            return (seed - 1) / 2147483646;
+          };
+
+          if (kind === 'star') {
+            for (let i = 0; i < 420; i++) {
+              const x = rand() * canvas.width;
+              const y = rand() * canvas.height;
+              const rad = 2 + rand() * 11;
+              const bright = rand() > 0.35;
+              ctx.fillStyle = bright ? 'rgba(255, 251, 235, 0.22)' : 'rgba(180, 83, 9, 0.24)';
+              ctx.beginPath();
+              ctx.arc(x, y, rad, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } else if (id === 'planet-jupiter' || id === 'planet-saturn') {
+            const bands = id === 'planet-jupiter' ? 18 : 12;
+            for (let i = 0; i < bands; i++) {
+              const y = (i / bands) * canvas.height;
+              const h = (canvas.height / bands) * (0.65 + rand() * 0.5);
+              const shift = (rand() - 0.5) * 65;
+              ctx.fillStyle = `rgba(${Math.min(255, Math.max(0, rBase + shift))}, ${Math.min(255, Math.max(0, gBase + shift))}, ${Math.min(255, Math.max(0, bBase + shift))}, 0.55)`;
+              ctx.fillRect(0, y, canvas.width, h);
+            }
+            if (id === 'planet-jupiter') {
+              ctx.fillStyle = 'rgba(194, 65, 12, 0.72)';
+              ctx.beginPath();
+              ctx.ellipse(canvas.width * 0.62, canvas.height * 0.64, 34, 18, 0.06, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } else if (id === 'planet-earth') {
+            ctx.fillStyle = 'rgba(34, 197, 94, 0.65)';
+            for (let i = 0; i < 22; i++) {
+              ctx.beginPath();
+              ctx.ellipse(rand() * canvas.width, 36 + rand() * (canvas.height - 72), 18 + rand() * 44, 10 + rand() * 24, rand() * Math.PI, 0, Math.PI * 2);
+              ctx.fill();
+            }
+            ctx.fillStyle = 'rgba(248, 250, 252, 0.38)';
+            for (let i = 0; i < 36; i++) {
+              ctx.beginPath();
+              ctx.ellipse(rand() * canvas.width, rand() * canvas.height, 22 + rand() * 45, 4 + rand() * 9, (rand() - 0.5) * 0.25, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } else {
+            for (let i = 0; i < 140; i++) {
+              const x = rand() * canvas.width;
+              const y = rand() * canvas.height;
+              const rad = 2 + rand() * 14;
+              ctx.fillStyle = rand() > 0.5 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.22)';
+              ctx.beginPath();
+              ctx.arc(x, y, rad, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          const tex = new THREE.CanvasTexture(canvas);
+          tex.wrapS = THREE.RepeatWrapping;
+          tex.wrapT = THREE.ClampToEdgeWrapping;
+          tex.needsUpdate = true;
+          return tex;
+        } catch (err) {
+          return null;
+        }
+      }
+
+      function createSaturnRingTexture() {
+        if (!isThreeAvailable()) return null;
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 256;
+          canvas.height = 32;
+          const ctx = canvas.getContext('2d');
+          for (let x = 0; x < canvas.width; x++) {
+            const t = x / canvas.width;
+            const inCassiniGap = t > 0.64 && t < 0.72;
+            const alpha = inCassiniGap ? 0.12 : 0.45 + 0.4 * Math.sin(t * Math.PI * 10);
+            ctx.fillStyle = `rgba(254, 240, 138, ${Math.max(0.08, Math.min(0.95, alpha))})`;
+            ctx.fillRect(x, 0, 1, canvas.height);
+          }
+          const tex = new THREE.CanvasTexture(canvas);
+          tex.needsUpdate = true;
+          return tex;
+        } catch (err) {
+          return null;
+        }
+      }
+
+      function rebuild3DScene() {
+        if (!isThreeAvailable() || !viewport.scene) return;
+
+        const disposeObject3D = (obj) => {
+          if (!obj) return;
+          obj.traverse((child) => {
+            if (child.geometry && typeof child.geometry.dispose === 'function') {
+              child.geometry.dispose();
+            }
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach((mat) => {
+              if (!mat) return;
+              if (mat.map && typeof mat.map.dispose === 'function') {
+                mat.map.dispose();
+              }
+              if (typeof mat.dispose === 'function') {
+                mat.dispose();
+              }
+            });
+          });
+        };
+
+        viewport.starMeshes.forEach((entry) => {
+          if (entry && entry.group) {
+            viewport.scene.remove(entry.group);
+            disposeObject3D(entry.group);
+          }
+        });
+        viewport.starMeshes.clear();
+
+        viewport.planetMeshes.forEach((entry) => {
+          if (!entry) return;
+          if (entry.group) {
+            viewport.scene.remove(entry.group);
+            disposeObject3D(entry.group);
+          }
+          if (entry.orbitLine) {
+            viewport.scene.remove(entry.orbitLine);
+            disposeObject3D(entry.orbitLine);
+          }
+        });
+        viewport.planetMeshes.clear();
+
+        appState.data.stars.forEach((star) => {
+          const group = new THREE.Group();
+          const r = Number(star.radius || 12);
+          const colorHex = new THREE.Color(star.color || '#f59e0b');
+          const sunTex = createCelestialTexture('star', star.color || '#fbbf24', star.id);
+
+          const coreGeo = new THREE.SphereGeometry(r, 48, 48);
+          const coreMat = new THREE.MeshBasicMaterial({
+            map: sunTex || null,
+            color: sunTex ? 0xffffff : colorHex
+          });
+          const core = new THREE.Mesh(coreGeo, coreMat);
+          core.userData = { kind: 'star', id: star.id };
+          group.add(core);
+
+          const haloGeo = new THREE.SphereGeometry(r * 1.42, 32, 32);
+          const haloMat = new THREE.MeshBasicMaterial({
+            color: colorHex,
+            transparent: true,
+            opacity: 0.22,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+          });
+          const halo = new THREE.Mesh(haloGeo, haloMat);
+          group.add(halo);
+
+          const ringGeo = new THREE.RingGeometry(r * 1.55, r * 1.72, 40);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: 0xfef08a,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.85
+          });
+          const ring = new THREE.Mesh(ringGeo, ringMat);
+          ring.rotation.x = Math.PI / 2;
+          ring.visible = appState.data.selectedKind === 'star' && appState.data.selectedId === star.id;
+          group.add(ring);
+
+          const pos = star.position || { x: 0, y: 0, z: 0 };
+          group.position.set(pos.x || 0, pos.y || 0, pos.z || 0);
+          viewport.scene.add(group);
+          viewport.starMeshes.set(star.id, { group, core, halo, ring });
+        });
+
+        appState.data.planets.forEach((planet) => {
+          const star = getStarById(planet.starId) || appState.data.stars[0];
+          const center = star && star.position ? star.position : { x: 0, y: 0, z: 0 };
+          const r = Number(planet.radius || 3.8);
+          const orbitR = Number(planet.orbitRadius || 40);
+          const colorHex = new THREE.Color(planet.color || '#38bdf8');
+          const planetTex = createCelestialTexture('planet', planet.color || '#38bdf8', planet.id);
+
+          const group = new THREE.Group();
+          const bodyGeo = new THREE.SphereGeometry(r, 36, 36);
+          const bodyMat = new THREE.MeshStandardMaterial({
+            map: planetTex || null,
+            color: planetTex ? 0xffffff : colorHex,
+            roughness: ['planet-earth', 'planet-neptune', 'planet-uranus'].includes(planet.id) ? 0.52 : 0.78,
+            metalness: 0.06
+          });
+          const body = new THREE.Mesh(bodyGeo, bodyMat);
+          body.userData = { kind: 'planet', id: planet.id };
+          group.add(body);
+
+          if (['planet-earth', 'planet-venus', 'planet-jupiter', 'planet-saturn', 'planet-uranus', 'planet-neptune'].includes(planet.id)) {
+            const atmoGeo = new THREE.SphereGeometry(r * 1.045, 32, 32);
+            const atmoMat = new THREE.MeshBasicMaterial({
+              color: colorHex,
+              transparent: true,
+              opacity: planet.id === 'planet-earth' ? 0.16 : 0.1,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false
+            });
+            group.add(new THREE.Mesh(atmoGeo, atmoMat));
+          }
+
+          const selGeo = new THREE.RingGeometry(r * 1.35, r * 1.52, 28);
+          const selMat = new THREE.MeshBasicMaterial({
+            color: 0xf8fafc,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9
+          });
+          const selRing = new THREE.Mesh(selGeo, selMat);
+          selRing.rotation.x = Math.PI / 2;
+          selRing.visible = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
+          group.add(selRing);
+
+          if (planet.id === 'planet-saturn') {
+            const ringTex = createSaturnRingTexture();
+            const saturnRingGeo = new THREE.RingGeometry(r * 1.28, r * 2.28, 64);
+            const saturnRingMat = new THREE.MeshBasicMaterial({
+              map: ringTex || null,
+              color: ringTex ? 0xffffff : 0xfef08a,
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.85,
+              depthWrite: false
+            });
+            const saturnRing = new THREE.Mesh(saturnRingGeo, saturnRingMat);
+            saturnRing.rotation.x = Math.PI * 0.42;
+            saturnRing.rotation.y = 0.22;
+            group.add(saturnRing);
+          }
+
+          const segments = 96;
+          const pts = [];
+          const inc = Number(planet.inclination || 0);
+          for (let i = 0; i <= segments; i++) {
+            const a = (i / segments) * Math.PI * 2;
+            pts.push(
+              new THREE.Vector3(
+                (center.x || 0) + Math.cos(a) * orbitR,
+                (center.y || 0) + Math.sin(a * 1.5) * Math.sin(inc) * orbitR * 0.45,
+                (center.z || 0) + Math.sin(a) * orbitR
+              )
+            );
+          }
+          const orbitGeo = new THREE.BufferGeometry().setFromPoints(pts);
+          const isSelected = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
+          const orbitMat = new THREE.LineBasicMaterial({
+            color: isSelected ? 0x38bdf8 : 0x475569,
+            transparent: true,
+            opacity: isSelected ? 0.78 : 0.34
+          });
+          const orbitLine = new THREE.Line(orbitGeo, orbitMat);
+          viewport.scene.add(orbitLine);
+          viewport.scene.add(group);
+
+          viewport.planetMeshes.set(planet.id, { group, body, selRing, orbitLine });
+        });
+      }
+
+      function clampVal(v, min, max) {
+        return Math.min(max, Math.max(min, v));
+      }
+
+      function update3DTransforms(dt) {
+        if (!isThreeAvailable() || !viewport.camera) return;
+
+        if (!appState.data.orbitPaused) {
+          viewport.elapsedOrbitTime += dt;
+        }
+
+        appState.data.stars.forEach((star, idx) => {
+          const entry = viewport.starMeshes.get(star.id);
+          if (!entry) return;
+          const pos = star.position || { x: 0, y: 0, z: 0 };
+          entry.group.position.set(pos.x || 0, pos.y || 0, pos.z || 0);
+          if (idx === 0 && viewport.sunLight) {
+            viewport.sunLight.position.set(pos.x || 0, pos.y || 0, pos.z || 0);
+          }
+          entry.core.rotation.y += dt * 0.22;
+          entry.halo.rotation.y -= dt * 0.12;
+          const isSel = appState.data.selectedKind === 'star' && appState.data.selectedId === star.id;
+          entry.ring.visible = isSel;
+          if (isSel) entry.ring.rotation.z += dt * 0.8;
+        });
+
+        appState.data.planets.forEach((planet) => {
+          const entry = viewport.planetMeshes.get(planet.id);
+          if (!entry) return;
+          const pos = getPlanetWorldPosition(planet, viewport.elapsedOrbitTime);
+          entry.group.position.set(pos.x, pos.y, pos.z);
+          entry.body.rotation.y += dt * 0.9;
+          const isSel = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
+          entry.selRing.visible = isSel;
+          if (isSel) entry.selRing.rotation.z += dt * 1.2;
+        });
+
+        if (appState.data.lockedTarget) {
+          if (appState.data.lockedTarget.kind === 'star') {
+            const s = getStarById(appState.data.lockedTarget.id);
+            if (s && s.position) {
+              viewport.cameraTarget.x += ((s.position.x || 0) - viewport.cameraTarget.x) * 0.14;
+              viewport.cameraTarget.y += ((s.position.y || 0) - viewport.cameraTarget.y) * 0.14;
+              viewport.cameraTarget.z += ((s.position.z || 0) - viewport.cameraTarget.z) * 0.14;
+            }
+          } else if (appState.data.lockedTarget.kind === 'planet') {
+            const p = getPlanetById(appState.data.lockedTarget.id);
+            if (p) {
+              const pos = getPlanetWorldPosition(p, viewport.elapsedOrbitTime);
+              viewport.cameraTarget.x += (pos.x - viewport.cameraTarget.x) * 0.16;
+              viewport.cameraTarget.y += (pos.y - viewport.cameraTarget.y) * 0.16;
+              viewport.cameraTarget.z += (pos.z - viewport.cameraTarget.z) * 0.16;
+            }
+          }
+        }
+
+        const r = clampVal(Number(viewport.cameraSpherical.radius) || BASE_DISTANCE, 25, 1800);
+        const phi = clampVal(Number(viewport.cameraSpherical.phi) || Math.PI * 0.36, 0.12, Math.PI - 0.12);
+        const theta = Number(viewport.cameraSpherical.theta) || 0.25;
+
+        const sinPhi = Math.sin(phi);
+        viewport.camera.position.set(
+          viewport.cameraTarget.x + r * sinPhi * Math.sin(theta),
+          viewport.cameraTarget.y + r * Math.cos(phi),
+          viewport.cameraTarget.z + r * sinPhi * Math.cos(theta)
+        );
+        viewport.camera.lookAt(viewport.cameraTarget.x, viewport.cameraTarget.y, viewport.cameraTarget.z);
+
+        if (viewport.starfield) {
+          viewport.starfield.rotation.y += dt * 0.012;
+        }
+      }
+
+      function render2DCanvas() {
+        const ctx = viewport.ctx2D;
+        const canvas = viewport.canvas2D;
+        if (!ctx || !canvas) return;
+
+        const w = canvas.width;
+        const h = canvas.height;
+        const zoomScale = BASE_DISTANCE / Math.max(25, Number(viewport.cameraSpherical.radius) || BASE_DISTANCE);
+
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#020617';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.strokeStyle = 'rgba(51, 65, 85, 0.24)';
+        ctx.lineWidth = 1;
+        const gridStep = Math.max(28, 60 * zoomScale);
+        const offsetX = (((w * 0.5 + viewport.pan2D.x) % gridStep) + gridStep) % gridStep;
+        const offsetY = (((h * 0.5 + viewport.pan2D.y) % gridStep) + gridStep) % gridStep;
+        for (let gx = offsetX; gx < w; gx += gridStep) {
+          ctx.beginPath();
+          ctx.moveTo(gx, 0);
+          ctx.lineTo(gx, h);
+          ctx.stroke();
+        }
+        for (let gy = offsetY; gy < h; gy += gridStep) {
+          ctx.beginPath();
+          ctx.moveTo(0, gy);
+          ctx.lineTo(w, gy);
+          ctx.stroke();
+        }
+
+        if (appState.data.lockedTarget) {
+          if (appState.data.lockedTarget.kind === 'star') {
+            const s = getStarById(appState.data.lockedTarget.id);
+            if (s && s.position) {
+              viewport.pan2D.x = -(s.position.x || 0) * zoomScale;
+              viewport.pan2D.y = -(s.position.z || 0) * zoomScale;
+            }
+          } else if (appState.data.lockedTarget.kind === 'planet') {
+            const p = getPlanetById(appState.data.lockedTarget.id);
+            if (p) {
+              const pos = getPlanetWorldPosition(p, viewport.elapsedOrbitTime);
+              viewport.pan2D.x = -pos.x * zoomScale;
+              viewport.pan2D.y = -pos.z * zoomScale;
+            }
+          }
+        }
+
+        const toScreen = (wx, wz) => ({
+          x: w * 0.5 + viewport.pan2D.x + wx * zoomScale,
+          y: h * 0.5 + viewport.pan2D.y + wz * zoomScale
+        });
+
+        viewport.projectedHitTargets = [];
+
+        appState.data.planets.forEach((planet) => {
+          const star = getStarById(planet.starId) || appState.data.stars[0];
+          const centerPos = star && star.position ? star.position : { x: 0, y: 0, z: 0 };
+          const centerScreen = toScreen(centerPos.x || 0, centerPos.z || 0);
+          const orbitPx = Number(planet.orbitRadius || 40) * zoomScale;
+          const isSel = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
+
+          ctx.beginPath();
+          ctx.arc(centerScreen.x, centerScreen.y, orbitPx, 0, Math.PI * 2);
+          ctx.strokeStyle = isSel ? 'rgba(56, 189, 248, 0.72)' : 'rgba(100, 116, 139, 0.28)';
+          ctx.lineWidth = isSel ? 1.8 : 1;
+          ctx.stroke();
+        });
+
+        appState.data.stars.forEach((star) => {
+          const pos = star.position || { x: 0, y: 0, z: 0 };
+          const sc = toScreen(pos.x || 0, pos.z || 0);
+          const rPx = Math.max(12, Number(star.radius || 14) * zoomScale * 0.95);
+          const isSel = appState.data.selectedKind === 'star' && appState.data.selectedId === star.id;
+
+          const grad = ctx.createRadialGradient(sc.x, sc.y, rPx * 0.15, sc.x, sc.y, rPx * 2.25);
+          grad.addColorStop(0, star.color || '#f59e0b');
+          grad.addColorStop(0.55, 'rgba(251, 191, 36, 0.25)');
+          grad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(sc.x, sc.y, rPx * 2.25, 0, Math.PI * 2);
+          ctx.fill();
+
+          const sunSphereGrad = ctx.createRadialGradient(sc.x - rPx * 0.25, sc.y - rPx * 0.25, rPx * 0.1, sc.x, sc.y, rPx);
+          sunSphereGrad.addColorStop(0, '#fffbeb');
+          sunSphereGrad.addColorStop(0.55, star.color || '#fbbf24');
+          sunSphereGrad.addColorStop(1, '#d97706');
+          ctx.fillStyle = sunSphereGrad;
+          ctx.beginPath();
+          ctx.arc(sc.x, sc.y, rPx, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (isSel) {
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(sc.x, sc.y, rPx + 6, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = '#f8fafc';
+          ctx.font = '600 12px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(star.name, sc.x, sc.y + rPx + 16);
+
+          viewport.projectedHitTargets.push({
+            kind: 'star',
+            id: star.id,
+            x: sc.x,
+            y: sc.y,
+            hitRadius: Math.max(16, rPx + 6)
+          });
+        });
+
+        appState.data.planets.forEach((planet) => {
+          const pos = getPlanetWorldPosition(planet, viewport.elapsedOrbitTime);
+          const sc = toScreen(pos.x, pos.z);
+          const rPx = Math.max(5, Number(planet.radius || 3.8) * zoomScale * 1.15);
+          const isSel = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
+
+          if (planet.id === 'planet-saturn') {
+            ctx.save();
+            ctx.translate(sc.x, sc.y);
+            ctx.rotate(-0.28);
+            ctx.strokeStyle = 'rgba(254, 240, 138, 0.72)';
+            ctx.lineWidth = Math.max(2, rPx * 0.32);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rPx * 2.05, rPx * 0.62, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          const planetSphereGrad = ctx.createRadialGradient(
+            sc.x - rPx * 0.35,
+            sc.y - rPx * 0.35,
+            rPx * 0.1,
+            sc.x,
+            sc.y,
+            rPx
+          );
+          planetSphereGrad.addColorStop(0, '#f8fafc');
+          planetSphereGrad.addColorStop(0.22, planet.color || '#38bdf8');
+          planetSphereGrad.addColorStop(1, '#090d16');
+          ctx.fillStyle = planetSphereGrad;
+          ctx.beginPath();
+          ctx.arc(sc.x, sc.y, rPx, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (isSel) {
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(sc.x, sc.y, rPx + 4.5, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = '500 11px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(planet.name, sc.x, sc.y + rPx + 14);
+
+          viewport.projectedHitTargets.push({
+            kind: 'planet',
+            id: planet.id,
+            x: sc.x,
+            y: sc.y,
+            hitRadius: Math.max(12, rPx + 5)
+          });
+        });
+      }
+
+      function renderLoop(now) {
+        try {
+          const currentNow = typeof now === 'number' ? now : performance.now();
+          const dt = Math.min(0.05, Math.max(0.001, (currentNow - viewport.lastFrameTime) / 1000));
+          viewport.lastFrameTime = currentNow;
+
+          if (appState.data.viewMode === '3d' && viewport.renderer && viewport.scene && viewport.camera) {
+            update3DTransforms(dt);
+            viewport.renderer.render(viewport.scene, viewport.camera);
+          } else {
+            if (!appState.data.orbitPaused) {
+              viewport.elapsedOrbitTime += dt;
+            }
+            render2DCanvas();
+          }
+        } catch (err) {
+          try {
+            if (!appState.data.orbitPaused) {
+              viewport.elapsedOrbitTime += 0.016;
+            }
+            render2DCanvas();
+          } catch (fallbackErr) {
+            // 最小フォールバック
+          }
+        }
+        requestAnimationFrame(renderLoop);
+      }
+
+      function startRenderLoop() {
+        if (viewport.loopStarted) return;
+        viewport.loopStarted = true;
+        viewport.lastFrameTime = performance.now();
+        requestAnimationFrame(renderLoop);
+      }
+
+      function handleViewportResize() {
+        const w = Math.max(320, (els.viewportContainer && els.viewportContainer.clientWidth) || window.innerWidth || 1024);
+        const h = Math.max(240, (els.viewportContainer && els.viewportContainer.clientHeight) || window.innerHeight || 768);
+        if (viewport.camera && viewport.renderer) {
+          viewport.camera.aspect = w / h;
+          viewport.camera.updateProjectionMatrix();
+          viewport.renderer.setSize(w, h);
+        }
+        if (viewport.canvas2D) {
+          viewport.canvas2D.width = w;
+          viewport.canvas2D.height = h;
+        }
+      }
+
+      // =========================================================================
+      // 6. ビューポート操作（回転・パン・ズーム・クリック選択＆ダブルクリック開く）
+      // =========================================================================
+      function setCameraDistance(dist, persist = true) {
+        const clamped = Math.min(1800, Math.max(25, Number(dist) || BASE_DISTANCE));
+        viewport.cameraSpherical.radius = clamped;
+        appState.data.cameraDistance = clamped;
+        syncZoomUI();
+        if (persist) saveStateToLocalStorage(false);
+      }
+
+      function syncZoomUI() {
+        const r = Number(viewport.cameraSpherical.radius) || BASE_DISTANCE;
+        if (els.cameraZoomRange) els.cameraZoomRange.value = String(Math.round(r));
+        const pct = Math.max(14, Math.min(1700, Math.round((BASE_DISTANCE / r) * 100)));
+        if (els.cameraZoomPercent) els.cameraZoomPercent.textContent = `${pct}%`;
+      }
+
+      function updateLockStatusUI() {
+        const lock = appState.data.lockedTarget;
+        if (!lock) {
+          if (els.lockStatusText) els.lockStatusText.textContent = '自由視点';
+          if (els.btnUnlockCamera) els.btnUnlockCamera.classList.add('hidden');
+          return;
+        }
+        if (lock.kind === 'star') {
+          const s = getStarById(lock.id);
+          if (els.lockStatusText) els.lockStatusText.textContent = s ? `恒星ロック: ${s.name}` : '自由視点';
+        } else {
+          const p = getPlanetById(lock.id);
+          if (els.lockStatusText) els.lockStatusText.textContent = p ? `惑星ロック: ${p.name}` : '自由視点';
+        }
+        if (els.btnUnlockCamera) els.btnUnlockCamera.classList.remove('hidden');
+      }
+
+      function selectEntity(kind, id, lockCamera = false, openInspector = false) {
+        appState.data.selectedKind = kind;
+        appState.data.selectedId = id;
+        if (lockCamera) {
+          appState.data.lockedTarget = { kind, id };
+        }
+        if (openInspector && els.inspectorPanel) {
+          els.inspectorPanel.classList.remove('hidden');
+        }
+        rebuild3DScene();
+        renderAllUI();
+        saveStateToLocalStorage(false);
+      }
+
+      function openPlanetContent(planet) {
+        if (!planet) return;
+        const pType = normalizePlanetType(planet);
+        if (pType === 'image') {
+          openImageViewer(planet.id);
+        } else {
+          openDocEditor(planet.id);
+        }
+      }
+
+      function hitTestAtClientPos(clientX, clientY) {
+        if (!els.viewportContainer) return null;
+        const rect = els.viewportContainer.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        if (appState.data.viewMode === '2d' || !viewport.camera || !viewport.raycaster) {
+          for (let i = viewport.projectedHitTargets.length - 1; i >= 0; i--) {
+            const t = viewport.projectedHitTargets[i];
+            const dist = Math.hypot(x - t.x, y - t.y);
+            if (dist <= t.hitRadius) return { kind: t.kind, id: t.id };
+          }
+          return null;
+        }
+
+        viewport.pointerNDC.x = (x / Math.max(1, rect.width)) * 2 - 1;
+        viewport.pointerNDC.y = -(y / Math.max(1, rect.height)) * 2 + 1;
+        viewport.raycaster.setFromCamera(viewport.pointerNDC, viewport.camera);
+
+        const candidates = [];
+        viewport.planetMeshes.forEach((entry) => candidates.push(entry.body));
+        viewport.starMeshes.forEach((entry) => candidates.push(entry.core));
+
+        const hits = viewport.raycaster.intersectObjects(candidates, false);
+        if (hits.length > 0 && hits[0].object && hits[0].object.userData) {
+          return { kind: hits[0].object.userData.kind, id: hits[0].object.userData.id };
+        }
+        return null;
+      }
+
+      function bindViewportEvents() {
+        const container = els.viewportContainer;
+        if (!container) return;
+
+        onEl(container, 'pointerdown', (e) => {
+          if (e.button === 2) {
+            viewport.dragMode = 'pan';
+          } else {
+            viewport.dragMode = appState.data.viewMode === '2d' ? 'pan' : 'orbit';
+          }
+          viewport.isDragging = true;
+          viewport.dragStart = { x: e.clientX, y: e.clientY };
+          viewport.pointerDownPos = { x: e.clientX, y: e.clientY };
+        });
+
+        window.addEventListener('pointermove', (e) => {
+          if (!viewport.isDragging) return;
+          const dx = e.clientX - viewport.dragStart.x;
+          const dy = e.clientY - viewport.dragStart.y;
+          viewport.dragStart = { x: e.clientX, y: e.clientY };
+
+          if (appState.data.viewMode === '2d') {
+            appState.data.lockedTarget = null;
+            updateLockStatusUI();
+            viewport.pan2D.x += dx;
+            viewport.pan2D.y += dy;
+          } else if (viewport.dragMode === 'orbit') {
+            viewport.cameraSpherical.theta -= dx * 0.0065;
+            viewport.cameraSpherical.phi = clampVal(viewport.cameraSpherical.phi - dy * 0.0065, 0.12, Math.PI - 0.12);
+          } else if (viewport.dragMode === 'pan') {
+            appState.data.lockedTarget = null;
+            updateLockStatusUI();
+            const panScale = viewport.cameraSpherical.radius * 0.0016;
+            viewport.cameraTarget.x -= dx * panScale;
+            viewport.cameraTarget.y += dy * panScale;
+          }
+        });
+
+        window.addEventListener('pointerup', (e) => {
+          if (!viewport.isDragging) return;
+          const moved = Math.hypot(e.clientX - viewport.pointerDownPos.x, e.clientY - viewport.pointerDownPos.y);
+          viewport.isDragging = false;
+          viewport.dragMode = null;
+
+          if (moved < 6) {
+            const hit = hitTestAtClientPos(e.clientX, e.clientY);
+            if (hit) {
+              selectEntity(hit.kind, hit.id, true, false);
+            }
+          }
+        });
+
+        onEl(container, 'dblclick', (e) => {
+          const hit = hitTestAtClientPos(e.clientX, e.clientY);
+          if (hit && hit.kind === 'planet') {
+            const planet = getPlanetById(hit.id);
+            if (planet) openPlanetContent(planet);
+          } else if (hit && hit.kind === 'star') {
+            selectEntity('star', hit.id, true, true);
+          }
+        });
+
+        onEl(
+          container,
+          'wheel',
+          (e) => {
+            e.preventDefault();
+            const factor = e.deltaY > 0 ? 1.1 : 0.9;
+            setCameraDistance(viewport.cameraSpherical.radius * factor, true);
+          },
+          { passive: false }
+        );
+
+        onEl(container, 'contextmenu', (e) => e.preventDefault());
+      }
+
+      // =========================================================================
+      // 7. 星系エクスプローラー描画 & ドラッグ移籍 & 恒星タブ開閉
+      // =========================================================================
+      function getTypeBadge(type) {
+        if (type === 'image') {
+          return { icon: 'ph-image', color: 'text-pink-400', label: '画像' };
+        }
+        return { icon: 'ph-file-text', color: 'text-sky-400', label: '文書' };
+      }
+
+      function matchesFilters(planet) {
+        const normalizedType = normalizePlanetType(planet);
+        if (appState.data.typeFilter !== 'all' && normalizedType !== appState.data.typeFilter) {
+          return false;
+        }
+        if (appState.searchQuery.trim() !== '') {
+          const q = appState.searchQuery.trim().toLowerCase();
+          return String(planet.name || '').toLowerCase().includes(q);
+        }
+        return true;
+      }
+
+      function toggleStarCollapsed(starId) {
+        if (!Array.isArray(appState.data.collapsedStarIds)) {
+          appState.data.collapsedStarIds = [];
+        }
+        const idx = appState.data.collapsedStarIds.indexOf(starId);
+        if (idx >= 0) {
+          appState.data.collapsedStarIds.splice(idx, 1);
+        } else {
+          appState.data.collapsedStarIds.push(starId);
+        }
+        renderExplorer();
+        saveStateToLocalStorage(false);
+      }
+
+      function togglePlanetExpanded(planetId) {
+        const idx = appState.data.expandedPlanetIds.indexOf(planetId);
+        if (idx >= 0) {
+          appState.data.expandedPlanetIds.splice(idx, 1);
+        } else {
+          appState.data.expandedPlanetIds.push(planetId);
+        }
+        renderExplorer();
+        saveStateToLocalStorage(false);
+      }
+
+      function renderExplorer() {
+        const listEl = els.explorerList;
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        const totalStars = appState.data.stars.length;
+        const totalPlanets = appState.data.planets.length;
+        if (els.explorerCounts) {
+          els.explorerCounts.textContent = `${totalStars}恒星 / ${totalPlanets}惑星`;
+        }
+
+        if (els.tabStarTree && els.tabAllFiles) {
+          if (appState.data.explorerTab === 'tree') {
+            els.tabStarTree.className = 'rounded-lg py-1 font-medium bg-sky-500/25 text-sky-200 transition';
+            els.tabAllFiles.className = 'rounded-lg py-1 font-medium text-slate-400 hover:text-slate-200 transition';
+          } else {
+            els.tabAllFiles.className = 'rounded-lg py-1 font-medium bg-sky-500/25 text-sky-200 transition';
+            els.tabStarTree.className = 'rounded-lg py-1 font-medium text-slate-400 hover:text-slate-200 transition';
+          }
+        }
+
+        els.typeFilterBtns.forEach((btn) => {
+          const active = btn.dataset.typeFilter === appState.data.typeFilter;
+          btn.className = active
+            ? 'type-filter-btn shrink-0 rounded-lg px-2 py-0.5 bg-slate-800 text-sky-300 border border-sky-500/40'
+            : 'type-filter-btn shrink-0 rounded-lg px-2 py-0.5 bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800';
+        });
+
+        if (appState.data.explorerTab === 'tree') {
+          const collapsedSet = new Set(appState.data.collapsedStarIds || []);
+          appState.data.stars.forEach((star) => {
+            const isCollapsed = collapsedSet.has(star.id);
+            const starCard = document.createElement('div');
+            const isStarSelected = appState.data.selectedKind === 'star' && appState.data.selectedId === star.id;
+            starCard.className = `rounded-xl border transition ${
+              isStarSelected ? 'bg-slate-800/90 border-amber-400/50' : 'bg-slate-950/65 border-slate-800/90 hover:border-slate-700'
+            }`;
+
+            starCard.addEventListener('dragover', (e) => {
+              e.preventDefault();
+              starCard.classList.add('border-sky-400', 'bg-sky-500/10');
+            });
+            starCard.addEventListener('dragleave', () => {
+              starCard.classList.remove('border-sky-400', 'bg-sky-500/10');
+            });
+            starCard.addEventListener('drop', (e) => {
+              e.preventDefault();
+              starCard.classList.remove('border-sky-400', 'bg-sky-500/10');
+              const pid = (e.dataTransfer && e.dataTransfer.getData('text/plain')) || appState.draggedPlanetId;
+              const planet = getPlanetById(pid);
+              if (planet && planet.starId !== star.id) {
+                planet.starId = star.id;
+                if (collapsedSet.has(star.id)) {
+                  toggleStarCollapsed(star.id);
+                }
+                rebuild3DScene();
+                renderAllUI();
+                saveStateToLocalStorage(true);
+                showToast(`「${planet.name}」を ${star.name} へ移籍しました`, 'ph-arrows-left-right');
+              }
+              appState.draggedPlanetId = null;
+            });
+
+            const planets = getPlanetsForStar(star.id).filter(matchesFilters);
+
+            const starHeader = document.createElement('div');
+            starHeader.className = 'flex items-center justify-between px-2.5 py-2 cursor-pointer select-none';
+            starHeader.innerHTML = `
+              <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                <button type="button" title="${isCollapsed ? '恒星タブを展開' : '恒星タブを折りたたむ'}" aria-expanded="${!isCollapsed}" class="toggle-star-btn rounded p-0.5 text-slate-400 hover:text-amber-200 hover:bg-slate-800/80 transition shrink-0">
+                  <i class="ph ${isCollapsed ? 'ph-caret-right' : 'ph-caret-down'} text-xs"></i>
+                </button>
+                <i class="ph-fill ph-sun text-sm shrink-0" style="color:${escapeHtml(star.color || '#f59e0b')}"></i>
+                <span class="font-semibold text-slate-100 truncate">${escapeHtml(star.name)}</span>
+              </div>
+              <span class="text-[10px] font-mono text-slate-400 shrink-0 ml-1">${planets.length}</span>
+            `;
+
+            const toggleStarBtn = starHeader.querySelector('.toggle-star-btn');
+            if (toggleStarBtn) {
+              toggleStarBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleStarCollapsed(star.id);
+              });
+            }
+
+            starHeader.addEventListener('click', () => {
+              selectEntity('star', star.id, true, true);
+            });
+            starCard.appendChild(starHeader);
+
+            const planetsContainer = document.createElement('div');
+            planetsContainer.className = `px-2 pb-2 space-y-1 ${isCollapsed ? 'hidden' : ''}`;
+
+            if (!isCollapsed && planets.length === 0) {
+              const emptyHint = document.createElement('div');
+              emptyHint.className = 'px-2 py-1.5 text-[10px] text-slate-500';
+              emptyHint.textContent = '表示対象の惑星はありません';
+              planetsContainer.appendChild(emptyHint);
+            }
+
+            planets.forEach((planet) => {
+              const isExpanded = appState.data.expandedPlanetIds.includes(planet.id);
+              const isSelected = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
+              const badge = getTypeBadge(normalizePlanetType(planet));
+
+              const pRow = document.createElement('div');
+              pRow.draggable = true;
+              pRow.className = `rounded-lg border px-2 py-1.5 transition cursor-grab active:cursor-grabbing ${
+                isSelected ? 'bg-sky-500/20 border-sky-400/50 text-white' : 'bg-slate-900/80 border-slate-800/80 text-slate-300 hover:border-slate-700'
+              }`;
+
+              pRow.addEventListener('dragstart', (e) => {
+                appState.draggedPlanetId = planet.id;
+                if (e.dataTransfer) {
+                  e.dataTransfer.setData('text/plain', planet.id);
+                  e.dataTransfer.effectAllowed = 'move';
+                }
+              });
+
+              pRow.addEventListener('dragend', () => {
+                appState.draggedPlanetId = null;
+              });
+
+              const topLine = document.createElement('div');
+              topLine.className = 'flex items-center justify-between gap-1.5';
+              topLine.innerHTML = `
+                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                  <button type="button" class="toggle-expand-btn text-slate-400 hover:text-white shrink-0">
+                    <i class="ph ${isExpanded ? 'ph-caret-down' : 'ph-caret-right'} text-[10px]"></i>
+                  </button>
+                  <i class="ph ${badge.icon} ${badge.color} text-sm shrink-0"></i>
+                  <span class="truncate font-medium">${escapeHtml(planet.name)}</span>
+                </div>
+                <button type="button" class="open-planet-btn rounded px-1.5 py-0.5 text-[10px] bg-slate-800 hover:bg-sky-500/30 text-sky-300 shrink-0">開く</button>
+              `;
+
+              topLine.addEventListener('click', (e) => {
+                if (e.target.closest('.toggle-expand-btn')) {
+                  togglePlanetExpanded(planet.id);
+                  return;
+                }
+                if (e.target.closest('.open-planet-btn')) {
+                  e.stopPropagation();
+                  openPlanetContent(planet);
+                  return;
+                }
+                selectEntity('planet', planet.id, true, false);
+              });
+
+              topLine.addEventListener('dblclick', () => {
+                openPlanetContent(planet);
+              });
+
+              pRow.appendChild(topLine);
+
+              if (isExpanded) {
+                const detail = document.createElement('div');
+                detail.className = 'mt-1.5 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400';
+                detail.innerHTML = `
+                  <span>${badge.label} ・ 軌道 ${Math.round(planet.orbitRadius)}</span>
+                  <button type="button" class="inspect-planet-btn text-sky-300 hover:underline">設定</button>
+                `;
+                const inspectBtn = detail.querySelector('.inspect-planet-btn');
+                if (inspectBtn) {
+                  inspectBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectEntity('planet', planet.id, true, true);
+                  });
+                }
+                pRow.appendChild(detail);
+              }
+
+              planetsContainer.appendChild(pRow);
+            });
+
+            starCard.appendChild(planetsContainer);
+            listEl.appendChild(starCard);
+          });
+        } else {
+          const filtered = appState.data.planets.filter(matchesFilters);
+          if (filtered.length === 0) {
+            listEl.innerHTML = '<div class="py-8 text-center text-slate-500">一致する惑星ファイルがありません</div>';
+            return;
+          }
+          filtered.forEach((planet) => {
+            const star = getStarById(planet.starId);
+            const badge = getTypeBadge(normalizePlanetType(planet));
+            const isSelected = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
+
+            const item = document.createElement('div');
+            item.className = `flex items-center justify-between gap-2 rounded-xl border px-2.5 py-2 cursor-pointer transition ${
+              isSelected ? 'bg-sky-500/20 border-sky-400/50 text-white' : 'bg-slate-950/65 border-slate-800 hover:border-slate-700 text-slate-300'
+            }`;
+            item.innerHTML = `
+              <div class="flex items-center gap-2 min-w-0">
+                <i class="ph ${badge.icon} ${badge.color} text-sm shrink-0"></i>
+                <div class="min-w-0">
+                  <div class="font-medium truncate">${escapeHtml(planet.name)}</div>
+                  <div class="text-[10px] text-slate-400 truncate">${escapeHtml(star ? star.name : '未所属')}</div>
+                </div>
+              </div>
+              <button type="button" class="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[10px] text-sky-300 shrink-0">開く</button>
+            `;
+            item.addEventListener('click', () => selectEntity('planet', planet.id, true, false));
+            item.addEventListener('dblclick', () => openPlanetContent(planet));
+            const openBtn = item.querySelector('button');
+            if (openBtn) {
+              openBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openPlanetContent(planet);
+              });
+            }
+            listEl.appendChild(item);
+          });
+        }
+      }
+
+      // =========================================================================
+      // 8. 太陽系排他ガード & インスペクター描画
+      // =========================================================================
+      function getSolarSystemOuterBoundary() {
+        const sun = getStarById('star-sun') || appState.data.stars[0];
+        const sunPlanets = sun ? getPlanetsForStar(sun.id) : [];
+        let maxOuter = 225;
+        sunPlanets.forEach((p) => {
+          const outer = Number(p.orbitRadius || 0) + Number(p.radius || 0) + 42;
+          if (outer > maxOuter) maxOuter = outer;
+        });
+        return maxOuter;
+      }
+
+      function enforceStarExclusionRule(rawPos, ignoreStarId = null, notifyIfAdjusted = false) {
+        const sun = getStarById('star-sun') || appState.data.stars[0];
+        const sunPos = sun && sun.position ? sun.position : { x: 0, y: 0, z: 0 };
+        const minSolarDist = getSolarSystemOuterBoundary();
+
+        let x = Number(rawPos && rawPos.x) || 0;
+        let y = Number(rawPos && rawPos.y) || 0;
+        let z = Number(rawPos && rawPos.z) || 0;
+        let adjusted = false;
+
+        if (!sun || sun.id !== ignoreStarId) {
+          const dxSun = x - (sunPos.x || 0);
+          const dzSun = z - (sunPos.z || 0);
+          const distSun = Math.hypot(dxSun, dzSun);
+          if (distSun < minSolarDist) {
+            const angle = distSun > 1e-4 ? Math.atan2(dzSun, dxSun) : (appState.data.stars.length + 1) * 1.15;
+            x = Math.round((sunPos.x || 0) + Math.cos(angle) * minSolarDist);
+            z = Math.round((sunPos.z || 0) + Math.sin(angle) * minSolarDist);
+            adjusted = true;
+          }
+        }
+
+        for (let pass = 0; pass < 4; pass++) {
+          let collided = false;
+          for (const other of appState.data.stars) {
+            if (other.id === ignoreStarId) continue;
+            const op = other.position || { x: 0, y: 0, z: 0 };
+            const clearance = other.id === 'star-sun' ? minSolarDist : (Number(other.radius) || 14) + 120;
+            const dx = x - (op.x || 0);
+            const dz = z - (op.z || 0);
+            const d = Math.hypot(dx, dz);
+            if (d < clearance) {
+              const ang = d > 1e-4 ? Math.atan2(dz, dx) : (pass + 1) * 1.57;
+              x = Math.round((op.x || 0) + Math.cos(ang) * clearance);
+              z = Math.round((op.z || 0) + Math.sin(ang) * clearance);
+              collided = true;
+              adjusted = true;
+            }
+          }
+          if (!collided) break;
+        }
+
+        if (adjusted && notifyIfAdjusted) {
+          showToast('太陽系内には恒星を配置できないため、外縁の安全領域へ移動しました', 'ph-shield-warning');
+        }
+
+        return { x: Math.round(x), y: Math.round(y), z: Math.round(z) };
+      }
+
+      function findSafeStarSpawnPosition() {
+        const sun = getStarById('star-sun') || appState.data.stars[0];
+        const sunPos = sun && sun.position ? sun.position : { x: 0, y: 0, z: 0 };
+        const minDistanceFromSun = getSolarSystemOuterBoundary();
+        const idx = appState.data.stars.length + 1;
+
+        for (let attempt = 0; attempt < 48; attempt++) {
+          const ring = Math.floor(attempt / 8);
+          const angle = idx * 1.35 + attempt * 0.78;
+          const dist = minDistanceFromSun + 45 + ring * 95;
+          const candidate = {
+            x: Math.round((sunPos.x || 0) + Math.cos(angle) * dist),
+            y: Math.round((sunPos.y || 0) + (((attempt % 3) - 1) * 24)),
+            z: Math.round((sunPos.z || 0) + Math.sin(angle) * dist)
+          };
+
+          const tooCloseToStar = appState.data.stars.some((s) => {
+            const sp = s.position || { x: 0, y: 0, z: 0 };
+            const d = Math.hypot(candidate.x - (sp.x || 0), candidate.z - (sp.z || 0));
+            const requiredClearance = s.id === 'star-sun' ? minDistanceFromSun : (Number(s.radius) || 14) + 120;
+            return d < requiredClearance;
+          });
+
+          const insideAnyOrbit = appState.data.planets.some((p) => {
+            const pStar = getStarById(p.starId) || sun;
+            const center = pStar && pStar.position ? pStar.position : { x: 0, y: 0, z: 0 };
+            const d = Math.hypot(candidate.x - (center.x || 0), candidate.z - (center.z || 0));
+            return d < Number(p.orbitRadius || 0) + 38;
+          });
+
+          if (!tooCloseToStar && !insideAnyOrbit) {
+            return enforceStarExclusionRule(candidate, null, false);
+          }
+        }
+
+        return enforceStarExclusionRule(
+          {
+            x: (sunPos.x || 0) + minDistanceFromSun + 90,
+            y: 0,
+            z: (sunPos.z || 0)
+          },
+          null,
+          false
+        );
+      }
+
+      function renderInspector() {
+        const container = els.inspectorContent;
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (appState.data.selectedKind === 'planet') {
+          const planet = getPlanetById(appState.data.selectedId);
+          if (planet) {
+            const pType = normalizePlanetType(planet);
+            if (els.inspectorHeaderIcon) els.inspectorHeaderIcon.className = 'ph-fill ph-planet text-sky-400 text-base';
+            if (els.inspectorHeaderTitle) els.inspectorHeaderTitle.textContent = '惑星インスペクター';
+
+            const starOptionsHtml = appState.data.stars
+              .map((s) => `<option value="${escapeHtml(s.id)}" ${s.id === planet.starId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`)
+              .join('');
+
+            container.innerHTML = `
+              <div class="space-y-1">
+                <label class="block text-[11px] text-slate-400">ファイル名 / 惑星名</label>
+                <input id="inspPlanetName" type="text" value="${escapeHtml(planet.name)}" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-400">
+              </div>
+
+              <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">所属恒星</label>
+                  <select id="inspPlanetStar" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-400">${starOptionsHtml}</select>
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-400 mb-1">惑星カラー</label>
+                  <input id="inspPlanetColor" type="color" value="${escapeHtml(planet.color || '#38bdf8')}" class="h-8 w-full rounded-lg bg-slate-950 border border-slate-700 cursor-pointer">
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[11px] mb-1">
+                  <span class="text-slate-400">惑星サイズ</span>
+                  <span id="inspPlanetRadiusVal" class="font-mono text-sky-300">${Number(planet.radius).toFixed(1)}</span>
+                </div>
+                <input id="inspPlanetRadius" type="range" min="1.5" max="10.0" step="0.1" value="${Number(planet.radius)}" class="w-full accent-sky-400">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[11px] mb-1">
+                  <span class="text-slate-400">軌道半径</span>
+                  <span id="inspPlanetOrbitVal" class="font-mono text-sky-300">${Math.round(planet.orbitRadius)}</span>
+                </div>
+                <input id="inspPlanetOrbit" type="range" min="12" max="240" step="1" value="${Math.round(planet.orbitRadius)}" class="w-full accent-sky-400">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-[11px] mb-1">
+                  <span class="text-slate-400">公転速度</span>
+                  <span id="inspPlanetSpeedVal" class="font-mono text-sky-300">${Number(planet.orbitSpeed).toFixed(2)}</span>
+                </div>
+                <input id="inspPlanetSpeed" type="range" min="0" max="1.5" step="0.02" value="${Number(planet.orbitSpeed)}" class="w-full accent-sky-400">
+              </div>
+
+              <div class="pt-1 flex flex-col gap-2">
+                <button id="inspOpenContentBtn" type="button" class="w-full rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 py-2 font-semibold text-sky-200 transition">
+                  ${pType === 'image' ? '画像ビューアを開く' : 'ドキュメントエディタを開く'}
+                </button>
+                <button id="inspDeletePlanetBtn" type="button" class="w-full rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 py-2 font-medium text-rose-300 transition flex items-center justify-center gap-1.5">
+                  <i class="ph ph-trash text-sm"></i>
+                  <span>ブラックホールへ消去</span>
+                </button>
+              </div>
+            `;
+
+            onEl(container.querySelector('#inspPlanetName'), 'input', (e) => {
+              planet.name = e.target.value;
+              renderExplorer();
+              saveStateToLocalStorage(false);
+            });
+            onEl(container.querySelector('#inspPlanetStar'), 'change', (e) => {
+              planet.starId = e.target.value;
+              rebuild3DScene();
+              renderExplorer();
+              saveStateToLocalStorage(true);
+            });
+            onEl(container.querySelector('#inspPlanetColor'), 'input', (e) => {
+              planet.color = e.target.value;
+              rebuild3DScene();
+              saveStateToLocalStorage(false);
+            });
+            onEl(container.querySelector('#inspPlanetRadius'), 'input', (e) => {
+              planet.radius = Number(e.target.value);
+              const valEl = container.querySelector('#inspPlanetRadiusVal');
+              if (valEl) valEl.textContent = planet.radius.toFixed(1);
+              rebuild3DScene();
+              saveStateToLocalStorage(false);
+            });
+            onEl(container.querySelector('#inspPlanetOrbit'), 'input', (e) => {
+              planet.orbitRadius = Number(e.target.value);
+              const valEl = container.querySelector('#inspPlanetOrbitVal');
+              if (valEl) valEl.textContent = String(Math.round(planet.orbitRadius));
+              rebuild3DScene();
+              saveStateToLocalStorage(false);
+            });
+            onEl(container.querySelector('#inspPlanetSpeed'), 'input', (e) => {
+              planet.orbitSpeed = Number(e.target.value);
+              const valEl = container.querySelector('#inspPlanetSpeedVal');
+              if (valEl) valEl.textContent = planet.orbitSpeed.toFixed(2);
+              saveStateToLocalStorage(false);
+            });
+            onEl(container.querySelector('#inspOpenContentBtn'), 'click', () => openPlanetContent(planet));
+            onEl(container.querySelector('#inspDeletePlanetBtn'), 'click', () => {
+              openBlackHoleModal('planet', planet.id);
+            });
+            return;
+          }
+        }
+
+        const star = getStarById(appState.data.selectedId) || appState.data.stars[0];
+        if (!star) return;
+        const pos = star.position || { x: 0, y: 0, z: 0 };
+
+        if (els.inspectorHeaderIcon) els.inspectorHeaderIcon.className = 'ph-fill ph-sun text-amber-400 text-base';
+        if (els.inspectorHeaderTitle) els.inspectorHeaderTitle.textContent = '恒星インスペクター';
+
+        const childPlanets = getPlanetsForStar(star.id);
+
+        container.innerHTML = `
+          <div class="space-y-1">
+            <label class="block text-[11px] text-slate-400">恒星系名（フォルダ名）</label>
+            <input id="inspStarName" type="text" value="${escapeHtml(star.name)}" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-400">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">恒星カラー</label>
+              <input id="inspStarColor" type="color" value="${escapeHtml(star.color || '#f59e0b')}" class="h-8 w-full rounded-lg bg-slate-950 border border-slate-700 cursor-pointer">
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">所属惑星数</label>
+              <div class="h-8 flex items-center px-2.5 rounded-lg bg-slate-950/70 border border-slate-800 font-mono text-amber-300">${childPlanets.length} 個</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-[11px] mb-1">
+              <span class="text-slate-400">恒星サイズ</span>
+              <span id="inspStarRadiusVal" class="font-mono text-amber-300">${Number(star.radius).toFixed(1)}</span>
+            </div>
+            <input id="inspStarRadius" type="range" min="8" max="26" step="0.5" value="${Number(star.radius)}" class="w-full accent-amber-400">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">空間 X</label>
+              <input id="inspStarPosX" type="number" step="10" value="${Math.round(pos.x || 0)}" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-1 text-xs font-mono text-slate-100">
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">空間 Z</label>
+              <input id="inspStarPosZ" type="number" step="10" value="${Math.round(pos.z || 0)}" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2 py-1 text-xs font-mono text-slate-100">
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <label class="block text-[11px] text-slate-400">星系メモ</label>
+            <textarea id="inspStarNote" rows="3" class="w-full rounded-xl bg-slate-950 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-400">${escapeHtml(star.note || '')}</textarea>
+          </div>
+
+          <div class="pt-1 flex flex-col gap-2">
+            <button id="inspFocusStarBtn" type="button" class="w-full rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 py-2 font-semibold text-amber-200 transition">
+              この恒星にカメラロック
+            </button>
+            <button id="inspDeleteStarBtn" type="button" class="w-full rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 py-2 font-medium text-rose-300 transition flex items-center justify-center gap-1.5">
+              <i class="ph ph-trash text-sm"></i>
+              <span>ブラックホールへ消去</span>
+            </button>
+          </div>
+        `;
+
+        onEl(container.querySelector('#inspStarName'), 'input', (e) => {
+          star.name = e.target.value;
+          renderExplorer();
+          saveStateToLocalStorage(false);
+        });
+        onEl(container.querySelector('#inspStarColor'), 'input', (e) => {
+          star.color = e.target.value;
+          rebuild3DScene();
+          renderExplorer();
+          saveStateToLocalStorage(false);
+        });
+        onEl(container.querySelector('#inspStarRadius'), 'input', (e) => {
+          star.radius = Number(e.target.value);
+          const valEl = container.querySelector('#inspStarRadiusVal');
+          if (valEl) valEl.textContent = star.radius.toFixed(1);
+          rebuild3DScene();
+          saveStateToLocalStorage(false);
+        });
+        onEl(container.querySelector('#inspStarPosX'), 'change', (e) => {
+          star.position = enforceStarExclusionRule(
+            { x: Number(e.target.value) || 0, y: pos.y || 0, z: pos.z || 0 },
+            star.id,
+            true
+          );
+          e.target.value = String(Math.round(star.position.x));
+          const zInput = container.querySelector('#inspStarPosZ');
+          if (zInput) zInput.value = String(Math.round(star.position.z));
+          rebuild3DScene();
+          saveStateToLocalStorage(true);
+        });
+        onEl(container.querySelector('#inspStarPosZ'), 'change', (e) => {
+          star.position = enforceStarExclusionRule(
+            { x: pos.x || 0, y: pos.y || 0, z: Number(e.target.value) || 0 },
+            star.id,
+            true
+          );
+          e.target.value = String(Math.round(star.position.z));
+          const xInput = container.querySelector('#inspStarPosX');
+          if (xInput) xInput.value = String(Math.round(star.position.x));
+          rebuild3DScene();
+          saveStateToLocalStorage(true);
+        });
+        onEl(container.querySelector('#inspStarNote'), 'input', (e) => {
+          star.note = e.target.value;
+          saveStateToLocalStorage(false);
+        });
+        onEl(container.querySelector('#inspFocusStarBtn'), 'click', () => {
+          selectEntity('star', star.id, true, false);
+          showToast(`「${star.name}」にカメラをロックしました`, 'ph-crosshair');
+        });
+        onEl(container.querySelector('#inspDeleteStarBtn'), 'click', () => {
+          openBlackHoleModal('star', star.id);
+        });
+      }
+
+      // =========================================================================
+      // 9. 新規恒星・新規惑星・ローカル読込・ブラックホール消去
+      // =========================================================================
+      function addNewStar() {
+        const spawnPos = findSafeStarSpawnPosition();
+        if (!spawnPos) {
+          showToast('太陽系外縁に安全な配置スペースが見つかりません', 'ph-warning');
+          return;
+        }
+
+        const idx = appState.data.stars.length + 1;
+        const palette = ['#f59e0b', '#38bdf8', '#a855f7', '#10b981', '#f43f5e'];
+        const color = palette[(idx - 1) % palette.length];
+        const newStar = {
+          id: `star-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          name: `系外恒星 #${idx}`,
+          color,
+          radius: 13,
+          position: spawnPos,
+          orbitSpeedMultiplier: 1.0,
+          note: '太陽系外縁の安全領域に生成された系外恒星です。'
+        };
+        appState.data.stars.push(newStar);
+        appState.data.selectedKind = 'star';
+        appState.data.selectedId = newStar.id;
+        appState.data.lockedTarget = { kind: 'star', id: newStar.id };
+        rebuild3DScene();
+        renderAllUI();
+        saveStateToLocalStorage(true);
+        showToast(`太陽系外縁に恒星「${newStar.name}」を追加しました`, 'ph-sun');
+      }
+
+      function openNewPlanetModal() {
+        if (appState.data.stars.length === 0) addNewStar();
+        const defaultStarId =
+          appState.data.selectedKind === 'star' && getStarById(appState.data.selectedId)
+            ? appState.data.selectedId
+            : appState.data.selectedKind === 'planet' && getPlanetById(appState.data.selectedId)
+              ? getPlanetById(appState.data.selectedId).starId
+              : appState.data.stars[0].id;
+
+        if (els.newPlanetStar) {
+          els.newPlanetStar.innerHTML = appState.data.stars
+            .map((s) => `<option value="${escapeHtml(s.id)}" ${defaultStarId === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`)
+            .join('');
+        }
+        if (els.newPlanetName) {
+          els.newPlanetName.value = '';
+          els.newPlanetName.setCustomValidity('');
+        }
+        if (els.newPlanetType) els.newPlanetType.value = 'document';
+        if (els.newPlanetRadius) els.newPlanetRadius.value = '3.8';
+        if (els.newPlanetRadiusValue) els.newPlanetRadiusValue.textContent = '3.8';
+        if (els.newPlanetOrbit) els.newPlanetOrbit.value = '44';
+        if (els.newPlanetOrbitValue) els.newPlanetOrbitValue.textContent = '44';
+        if (els.newPlanetImageUrl) els.newPlanetImageUrl.value = '';
+        if (els.newPlanetImageFile) els.newPlanetImageFile.value = '';
+        if (els.newPlanetImageFileName) els.newPlanetImageFileName.textContent = '未選択';
+        if (els.newPlanetImageSection) els.newPlanetImageSection.classList.add('hidden');
+        setModalVisibility(els.newPlanetModal, true);
+        if (els.newPlanetName) els.newPlanetName.focus();
+      }
+
+      function closeNewPlanetModal() {
+        setModalVisibility(els.newPlanetModal, false);
+      }
+
+      function createPlanetFromForm(e) {
+        e.preventDefault();
+        const name = els.newPlanetName ? els.newPlanetName.value.trim() : '';
+        if (!name) {
+          if (els.newPlanetName) {
+            els.newPlanetName.setCustomValidity('名称を入力して下さい');
+            els.newPlanetName.reportValidity();
+          }
+          showToast('名称を入力して下さい', 'ph-warning');
+          return;
+        }
+        if (els.newPlanetName) els.newPlanetName.setCustomValidity('');
+
+        const starId =
+          (els.newPlanetStar && els.newPlanetStar.value && getStarById(els.newPlanetStar.value) && els.newPlanetStar.value) ||
+          (appState.data.stars[0] && appState.data.stars[0].id);
+        const type = els.newPlanetType && els.newPlanetType.value === 'image' ? 'image' : 'document';
+        const radius = clampVal(Number((els.newPlanetRadius && els.newPlanetRadius.value) || 3.8), 1.5, 10.0);
+        const orbitRadius = clampVal(Number((els.newPlanetOrbit && els.newPlanetOrbit.value) || 44), 12, 240);
+
+        const defaultColors = {
+          document: '#38bdf8',
+          image: '#f472b6'
+        };
+
+        const planet = {
+          id: `planet-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          starId,
+          name,
+          type,
+          color: defaultColors[type] || '#38bdf8',
+          radius,
+          orbitRadius,
+          orbitSpeed: 0.24 + Math.random() * 0.2,
+          orbitAngle: Math.random() * Math.PI * 2,
+          inclination: (Math.random() - 0.5) * 0.16,
+          contentHtml: `<h1>${escapeHtml(name)}</h1><p>新規作成されたドキュメント惑星です。</p>`,
+          imageUrl:
+            type === 'image'
+              ? (els.newPlanetImageUrl && els.newPlanetImageUrl.value.trim()) ||
+                createDefaultSampleImageDataUrl(name, '#312e81', '#db2777')
+              : '',
+          updatedAt: Date.now()
+        };
+
+        const file = els.newPlanetImageFile && els.newPlanetImageFile.files && els.newPlanetImageFile.files[0];
+        if (type === 'image' && file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            planet.imageUrl = String(reader.result || '') || planet.imageUrl;
+            finalizeCreatedPlanet(planet);
+          };
+          reader.onerror = () => {
+            finalizeCreatedPlanet(planet);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          finalizeCreatedPlanet(planet);
+        }
+      }
+
+      function finalizeCreatedPlanet(planet) {
+        if (!Array.isArray(appState.data.collapsedStarIds)) {
+          appState.data.collapsedStarIds = [];
+        }
+        appState.data.collapsedStarIds = appState.data.collapsedStarIds.filter((id) => id !== planet.starId);
+        appState.data.planets.push(planet);
+        appState.data.selectedKind = 'planet';
+        appState.data.selectedId = planet.id;
+        appState.data.lockedTarget = { kind: 'planet', id: planet.id };
+        if (!appState.data.expandedPlanetIds.includes(planet.id)) {
+          appState.data.expandedPlanetIds.push(planet.id);
+        }
+        closeNewPlanetModal();
+        rebuild3DScene();
+        renderAllUI();
+        saveStateToLocalStorage(true);
+        showToast(`惑星「${planet.name}」を軌道に配置しました`, 'ph-planet');
+      }
+
+      function handleLocalFilesImport(filesList) {
+        if (!filesList || filesList.length === 0) return;
+        const targetStar =
+          (appState.data.selectedKind === 'star' && getStarById(appState.data.selectedId)) ||
+          (appState.data.selectedKind === 'planet' &&
+            getPlanetById(appState.data.selectedId) &&
+            getStarById(getPlanetById(appState.data.selectedId).starId)) ||
+          appState.data.stars[0];
+        if (!targetStar) return;
+
+        const fileArray = Array.from(filesList);
+        const createdPlanets = fileArray.map((file, index) => {
+          const mime = (file.type || '').toLowerCase();
+          const lowerName = (file.name || '').toLowerCase();
+          let type = 'document';
+          let color = '#38bdf8';
+
+          if (mime.startsWith('image/') || /\.(png|jpg|jpeg|gif|webp|svg)$/.test(lowerName)) {
+            type = 'image';
+            color = '#f472b6';
+          }
+
+          const orbitRadius = 38 + ((appState.data.planets.length + index) % 6) * 20;
+          return {
+            id: `planet-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 5)}`,
+            starId: targetStar.id,
+            name: file.name,
+            type,
+            color,
+            radius: 3.7,
+            orbitRadius,
+            orbitSpeed: 0.25 + index * 0.04,
+            orbitAngle: index * 1.1,
+            inclination: 0.04,
+            contentHtml: `<h1>${escapeHtml(file.name)}</h1><p>ローカルファイルから読み込まれました（${Math.max(1, Math.round(file.size / 1024))} KB）。</p>`,
+            imageUrl: type === 'image' ? createDefaultSampleImageDataUrl(file.name, '#312e81', '#db2777') : '',
+            updatedAt: Date.now()
+          };
+        });
+
+        appState.data.planets.push(...createdPlanets);
+        appState.data.collapsedStarIds = (appState.data.collapsedStarIds || []).filter((id) => id !== targetStar.id);
+        rebuild3DScene();
+        renderAllUI();
+        saveStateToLocalStorage(false);
+
+        const readPromises = fileArray.map((file, index) => {
+          const targetPlanet = createdPlanets[index];
+          if (!targetPlanet) return Promise.resolve();
+          return new Promise((resolve) => {
+            if (targetPlanet.type === 'image' && file.size <= 3 * 1024 * 1024) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                targetPlanet.imageUrl = String(reader.result || '') || targetPlanet.imageUrl;
+                targetPlanet.updatedAt = Date.now();
+                resolve();
+              };
+              reader.onerror = () => resolve();
+              reader.readAsDataURL(file);
+            } else if (targetPlanet.type === 'document' && file.size <= 512 * 1024) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const txt = String(reader.result || '');
+                targetPlanet.contentHtml = `<h1>${escapeHtml(file.name)}</h1><pre class="whitespace-pre-wrap text-xs bg-slate-950 p-3 rounded-xl border border-slate-800">${escapeHtml(txt.slice(0, 4000))}</pre>`;
+                targetPlanet.updatedAt = Date.now();
+                resolve();
+              };
+              reader.onerror = () => resolve();
+              reader.readAsText(file);
+            } else {
+              resolve();
+            }
+          });
+        });
+
+        Promise.all(readPromises).then(() => {
+          saveStateToLocalStorage(true);
+        });
+
+        showToast(`${fileArray.length} 件のファイルを惑星として配置しました`, 'ph-folder-open');
+      }
+
+      function openBlackHoleModal(kind, id) {
+        if (kind === 'star') {
+          if (appState.data.stars.length <= 1) {
+            showToast('最後の恒星は消去できません', 'ph-warning');
+            return;
+          }
+          const star = getStarById(id);
+          if (!star) return;
+          const childrenCount = getPlanetsForStar(star.id).length;
+          appState.blackHoleTarget = { kind: 'star', id: star.id };
+          if (els.blackHoleTargetName) els.blackHoleTargetName.textContent = `恒星: ${star.name}`;
+          if (els.blackHoleDescription) {
+            els.blackHoleDescription.textContent = `この恒星系と所属する ${childrenCount} 個の惑星をブラックホールへ消去します。この操作は元に戻せません。`;
+          }
+          setModalVisibility(els.blackHoleModal, true);
+        } else if (kind === 'planet') {
+          const planet = getPlanetById(id);
+          if (!planet) return;
+          appState.blackHoleTarget = { kind: 'planet', id: planet.id };
+          if (els.blackHoleTargetName) els.blackHoleTargetName.textContent = `惑星: ${planet.name}`;
+          if (els.blackHoleDescription) {
+            els.blackHoleDescription.textContent = `惑星ファイル「${planet.name}」をブラックホールへ消去します。よろしいですか？`;
+          }
+          setModalVisibility(els.blackHoleModal, true);
+        }
+      }
+
+      function closeBlackHoleModal() {
+        appState.blackHoleTarget = null;
+        setModalVisibility(els.blackHoleModal, false);
+      }
+
+      function confirmBlackHoleDeletion() {
+        const target = appState.blackHoleTarget;
+        if (!target) return;
+
+        if (target.kind === 'star') {
+          appState.data.stars = appState.data.stars.filter((s) => s.id !== target.id);
+          appState.data.planets = appState.data.planets.filter((p) => p.starId !== target.id);
+          appState.data.selectedKind = 'star';
+          appState.data.selectedId = appState.data.stars[0] ? appState.data.stars[0].id : null;
+          if (appState.data.lockedTarget && appState.data.lockedTarget.id === target.id) {
+            appState.data.lockedTarget = null;
+          }
+          showToast('恒星系をブラックホールへ消去しました', 'ph-trash');
+        } else if (target.kind === 'planet') {
+          appState.data.planets = appState.data.planets.filter((p) => p.id !== target.id);
+          if (appState.data.selectedKind === 'planet' && appState.data.selectedId === target.id) {
+            appState.data.selectedKind = 'star';
+            appState.data.selectedId = appState.data.stars[0] ? appState.data.stars[0].id : null;
+          }
+          if (appState.data.lockedTarget && appState.data.lockedTarget.id === target.id) {
+            appState.data.lockedTarget = null;
+          }
+          showToast('惑星をブラックホールへ消去しました', 'ph-trash');
+        }
+
+        closeBlackHoleModal();
+        reconcileSelection();
+        rebuild3DScene();
+        renderAllUI();
+        saveStateToLocalStorage(true);
+      }
+
+      // =========================================================================
+      // 10. ドキュメントエディタ & 画像ビューア
+      // =========================================================================
+      function openDocEditor(planetId) {
+        const planet = getPlanetById(planetId);
+        if (!planet) return;
+        const star = getStarById(planet.starId);
+        appState.activeDocPlanetId = planet.id;
+        if (els.docModalTitle) els.docModalTitle.textContent = planet.name;
+        if (els.docModalSubtitle) els.docModalSubtitle.textContent = `所属恒星: ${star ? star.name : '未所属'}`;
+        if (els.astralDocEditor) els.astralDocEditor.innerHTML = planet.contentHtml || '<p></p>';
+        if (els.docSaveIndicator) els.docSaveIndicator.textContent = '自動保存済み';
+        setModalVisibility(els.astralDocModal, true);
+        if (els.astralDocEditor) els.astralDocEditor.focus();
+      }
+
+      function saveDocEditorContent(closeAfter = false) {
+        if (!appState.activeDocPlanetId) return;
+        const planet = getPlanetById(appState.activeDocPlanetId);
+        if (planet && els.astralDocEditor) {
+          planet.contentHtml = els.astralDocEditor.innerHTML;
+          planet.updatedAt = Date.now();
+          saveStateToLocalStorage(true);
+          if (els.docSaveIndicator) els.docSaveIndicator.textContent = '自動保存済み';
+        }
+        if (closeAfter) {
+          setModalVisibility(els.astralDocModal, false);
+          appState.activeDocPlanetId = null;
+          renderExplorer();
+        }
+      }
+
+      function openImageViewer(planetId) {
+        const planet = getPlanetById(planetId);
+        if (!planet) return;
+        const star = getStarById(planet.starId);
+        appState.activeImagePlanetId = planet.id;
+        appState.imageViewer.scale = 1;
+        appState.imageViewer.rotation = 0;
+
+        if (!planet.imageUrl) {
+          planet.imageUrl = createDefaultSampleImageDataUrl(planet.name, '#1e3a8a', '#7e22ce');
+          saveStateToLocalStorage(false);
+        }
+
+        if (els.imageViewerTitle) els.imageViewerTitle.textContent = planet.name;
+        if (els.imageViewerSubtitle) els.imageViewerSubtitle.textContent = `所属恒星: ${star ? star.name : '未所属'}`;
+        if (els.imageViewerUrlInput) els.imageViewerUrlInput.value = planet.imageUrl || '';
+        if (els.imageViewerError) els.imageViewerError.classList.add('hidden');
+        if (els.imageViewerImg) els.imageViewerImg.src = planet.imageUrl || '';
+        updateImageViewerTransform();
+        setModalVisibility(els.astralImageViewerModal, true);
+      }
+
+      function updateImageViewerTransform() {
+        const { scale, rotation } = appState.imageViewer;
+        if (els.imageViewerImg) {
+          els.imageViewerImg.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+        }
+        if (els.imageViewerZoomLabel) {
+          els.imageViewerZoomLabel.textContent = `${Math.round(scale * 100)}%`;
+        }
+      }
+
+      // =========================================================================
+      // 11. 検索ドロップダウン & HUD表示切替
+      // =========================================================================
+      function renderSearchDropdown() {
+        const q = appState.searchQuery.trim().toLowerCase();
+        if (els.btnClearSearch) els.btnClearSearch.classList.toggle('hidden', q.length === 0);
+        if (!els.searchDropdown) return;
+        if (!q) {
+          els.searchDropdown.classList.add('hidden');
+          return;
+        }
+
+        const matchedStars = appState.data.stars.filter((s) => String(s.name || '').toLowerCase().includes(q));
+        const matchedPlanets = appState.data.planets.filter((p) => String(p.name || '').toLowerCase().includes(q));
+
+        els.searchDropdown.innerHTML = '';
+        if (matchedStars.length === 0 && matchedPlanets.length === 0) {
+          els.searchDropdown.innerHTML = '<div class="px-3 py-2 text-slate-500">該当する恒星・惑星がありません</div>';
+          els.searchDropdown.classList.remove('hidden');
+          return;
+        }
+
+        matchedStars.forEach((s) => {
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left hover:bg-slate-800 text-amber-200';
+          row.innerHTML = `<i class="ph-fill ph-sun text-amber-400"></i><span class="truncate">${escapeHtml(s.name)}</span>`;
+          row.addEventListener('click', () => {
+            selectEntity('star', s.id, true, true);
+            els.searchDropdown.classList.add('hidden');
+          });
+          els.searchDropdown.appendChild(row);
+        });
+
+        matchedPlanets.forEach((p) => {
+          const badge = getTypeBadge(normalizePlanetType(p));
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left hover:bg-slate-800 text-slate-200';
+          row.innerHTML = `<i class="ph ${badge.icon} ${badge.color}"></i><span class="truncate">${escapeHtml(p.name)}</span>`;
+          row.addEventListener('click', () => {
+            selectEntity('planet', p.id, true, false);
+            els.searchDropdown.classList.add('hidden');
+          });
+          els.searchDropdown.appendChild(row);
+        });
+
+        els.searchDropdown.classList.remove('hidden');
+      }
+
+      function setHudHidden(hidden) {
+        appState.hudHidden = Boolean(hidden);
+        document.body.classList.toggle('hud-hidden', appState.hudHidden);
+      }
+
+      // =========================================================================
+      // 12. イベントハンドラ登録 & 起動シーケンス
+      // =========================================================================
+      function renderAllUI() {
+        updateLockStatusUI();
+        syncZoomUI();
+        updateInviteAuthUI();
+        renderExplorer();
+        renderInspector();
+      }
+
+      function bindAllEvents() {
+        onEl(els.btnMode3D, 'click', () => {
+          appState.data.viewMode = '3d';
+          applyViewModeVisibility();
+          rebuild3DScene();
+          saveStateToLocalStorage(false);
+          showToast('3D WebGLモードに切り替えました', 'ph-cube');
+        });
+        onEl(els.btnMode2D, 'click', () => {
+          appState.data.viewMode = '2d';
+          applyViewModeVisibility();
+          saveStateToLocalStorage(false);
+          showToast('2D 俯瞰キャンバスモードに切り替えました', 'ph-squares-four');
+        });
+
+        onEl(els.searchInput, 'input', (e) => {
+          appState.searchQuery = e.target.value || '';
+          renderSearchDropdown();
+          renderExplorer();
+        });
+        onEl(els.btnClearSearch, 'click', () => {
+          appState.searchQuery = '';
+          if (els.searchInput) els.searchInput.value = '';
+          if (els.searchDropdown) els.searchDropdown.classList.add('hidden');
+          renderExplorer();
+        });
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('#searchInput') && !e.target.closest('#searchDropdown')) {
+            if (els.searchDropdown) els.searchDropdown.classList.add('hidden');
+          }
+        });
+
+        onEl(els.btnAddStar, 'click', addNewStar);
+        onEl(els.btnOpenNewPlanetModal, 'click', openNewPlanetModal);
+        onEl(els.btnCloseNewPlanetModal, 'click', closeNewPlanetModal);
+        onEl(els.btnCancelNewPlanet, 'click', closeNewPlanetModal);
+        onEl(els.newPlanetForm, 'submit', createPlanetFromForm);
+
+        onEl(els.newPlanetName, 'invalid', (e) => {
+          e.preventDefault();
+          els.newPlanetName.setCustomValidity('名称を入力して下さい');
+          showToast('名称を入力して下さい', 'ph-warning');
+        });
+        onEl(els.newPlanetName, 'input', () => {
+          els.newPlanetName.setCustomValidity('');
+        });
+
+        onEl(els.newPlanetRadius, 'input', () => {
+          if (els.newPlanetRadiusValue) {
+            els.newPlanetRadiusValue.textContent = Number(els.newPlanetRadius.value).toFixed(1);
+          }
+        });
+        onEl(els.newPlanetOrbit, 'input', () => {
+          if (els.newPlanetOrbitValue) {
+            els.newPlanetOrbitValue.textContent = String(Math.round(els.newPlanetOrbit.value));
+          }
+        });
+        onEl(els.newPlanetType, 'change', () => {
+          if (els.newPlanetImageSection) {
+            els.newPlanetImageSection.classList.toggle('hidden', els.newPlanetType.value !== 'image');
+          }
+        });
+        onEl(els.btnPickNewPlanetImageFile, 'click', () => {
+          if (els.newPlanetImageFile) els.newPlanetImageFile.click();
+        });
+        onEl(els.newPlanetImageFile, 'change', () => {
+          const f = els.newPlanetImageFile && els.newPlanetImageFile.files && els.newPlanetImageFile.files[0];
+          if (els.newPlanetImageFileName) els.newPlanetImageFileName.textContent = f ? f.name : '未選択';
+        });
+
+        onEl(els.localFileInput, 'change', (e) => {
+          handleLocalFilesImport(e.target.files);
+          e.target.value = '';
+        });
+
+        onEl(els.btnPauseOrbit, 'click', () => {
+          appState.data.orbitPaused = !appState.data.orbitPaused;
+          if (els.pauseOrbitIcon) {
+            els.pauseOrbitIcon.className = appState.data.orbitPaused ? 'ph ph-play text-sm text-amber-300' : 'ph ph-pause text-sm';
+          }
+          saveStateToLocalStorage(false);
+          showToast(appState.data.orbitPaused ? '公転を一時停止しました' : '公転を再開しました', 'ph-clock');
+        });
+
+        els.speedPresetBtns.forEach((btn) => {
+          onEl(btn, 'click', () => {
+            const spd = Number(btn.dataset.speedPreset || 0.5);
+            appState.data.orbitSpeed = spd;
+            els.speedPresetBtns.forEach((b) => {
+              const active = Number(b.dataset.speedPreset) === spd;
+              b.className = active
+                ? 'speed-preset-btn rounded-lg px-1.5 py-0.5 text-[11px] font-mono bg-sky-500/25 text-sky-200'
+                : 'speed-preset-btn rounded-lg px-1.5 py-0.5 text-[11px] font-mono text-slate-400 hover:text-white';
+            });
+            saveStateToLocalStorage(false);
+            showToast(`公転速度を ${spd}x に設定しました`, 'ph-gauge');
+          });
+        });
+
+        onEl(els.btnResetView, 'click', () => {
+          appState.data.lockedTarget = null;
+          viewport.cameraTarget = { x: 0, y: 0, z: 0 };
+          viewport.pan2D = { x: 0, y: 0 };
+          viewport.cameraSpherical.phi = Math.PI * 0.36;
+          viewport.cameraSpherical.theta = 0.25;
+          setCameraDistance(BASE_DISTANCE, true);
+          updateLockStatusUI();
+          showToast('視点をリセットしました', 'ph-compass');
+        });
+
+        onEl(els.btnToggleInspector, 'click', () => {
+          if (els.inspectorPanel) els.inspectorPanel.classList.toggle('hidden');
+          renderInspector();
+        });
+        onEl(els.btnCloseInspector, 'click', () => {
+          if (els.inspectorPanel) els.inspectorPanel.classList.add('hidden');
+        });
+
+        onEl(els.btnToggleExplorer, 'click', () => {
+          if (els.explorerPanel) els.explorerPanel.classList.toggle('hidden');
+        });
+        onEl(els.btnCloseExplorer, 'click', () => {
+          if (els.explorerPanel) els.explorerPanel.classList.add('hidden');
+        });
+
+        onEl(els.btnExpandAllPlanets, 'click', () => {
+          appState.data.collapsedStarIds = [];
+          appState.data.expandedPlanetIds = appState.data.planets.map((p) => p.id);
+          renderExplorer();
+          saveStateToLocalStorage(false);
+        });
+        onEl(els.btnCollapseAllPlanets, 'click', () => {
+          appState.data.collapsedStarIds = appState.data.stars.map((s) => s.id);
+          appState.data.expandedPlanetIds = [];
+          renderExplorer();
+          saveStateToLocalStorage(false);
+        });
+
+        onEl(els.tabStarTree, 'click', () => {
+          appState.data.explorerTab = 'tree';
+          renderExplorer();
+        });
+        onEl(els.tabAllFiles, 'click', () => {
+          appState.data.explorerTab = 'files';
+          renderExplorer();
+        });
+
+        els.typeFilterBtns.forEach((btn) => {
+          onEl(btn, 'click', () => {
+            appState.data.typeFilter = btn.dataset.typeFilter || 'all';
+            renderExplorer();
+          });
+        });
+
+        onEl(els.btnToggleHud, 'click', () => setHudHidden(true));
+        onEl(els.restoreHudFloatingBtn, 'click', () => setHudHidden(false));
+
+        window.addEventListener('keydown', (e) => {
+          if (e.shiftKey && (e.key === 'H' || e.key === 'h')) {
+            e.preventDefault();
+            setHudHidden(!appState.hudHidden);
+          } else if (e.key === 'Escape') {
+            closeNewPlanetModal();
+            closeBlackHoleModal();
+            closeSyncModal();
+            setModalVisibility(els.astralImageViewerModal, false);
+            if (els.astralDocModal && !els.astralDocModal.classList.contains('hidden')) {
+              saveDocEditorContent(true);
+            }
+          }
+        });
+
+        onEl(els.btnUnlockCamera, 'click', () => {
+          appState.data.lockedTarget = null;
+          updateLockStatusUI();
+          showToast('カメラロックを解除しました', 'ph-lock-open');
+        });
+        onEl(els.cameraZoomRange, 'input', () => {
+          setCameraDistance(Number(els.cameraZoomRange.value), false);
+        });
+        onEl(els.cameraZoomRange, 'change', () => {
+          setCameraDistance(Number(els.cameraZoomRange.value), true);
+        });
+        onEl(els.btnZoomIn, 'click', () => {
+          setCameraDistance(viewport.cameraSpherical.radius * 0.85, true);
+        });
+        onEl(els.btnZoomOut, 'click', () => {
+          setCameraDistance(viewport.cameraSpherical.radius * 1.18, true);
+        });
+        onEl(els.btnZoomReset, 'click', () => {
+          setCameraDistance(BASE_DISTANCE, true);
+        });
+
+        onEl(els.btnOpenSyncModal, 'click', openSyncModal);
+        onEl(els.btnCloseSyncModal, 'click', closeSyncModal);
+
+        onEl(els.btnLockInvite, 'click', () => {
+          if (isInviteAuthenticated()) {
+            lockInviteAuthentication(true);
+          } else {
+            openSyncModal();
+            if (els.inviteCodeInput) {
+              els.inviteCodeInput.value = '';
+              els.inviteCodeInput.focus();
+            }
+          }
+        });
+        onEl(els.btnModalLockInvite, 'click', () => {
+          lockInviteAuthentication(true);
+          if (els.inviteCodeInput) {
+            els.inviteCodeInput.value = '';
+            els.inviteCodeInput.focus();
+          }
+        });
+        onEl(els.btnToggleInviteVisibility, 'click', () => {
+          if (!els.inviteCodeInput) return;
+          const isPassword = els.inviteCodeInput.type === 'password';
+          els.inviteCodeInput.type = isPassword ? 'text' : 'password';
+          if (els.inviteVisibilityIcon) {
+            els.inviteVisibilityIcon.className = isPassword ? 'ph ph-eye-slash text-sm' : 'ph ph-eye text-sm';
+          }
+        });
+        onEl(els.btnFillDefaultInvite, 'click', () => {
+          const hasCustom = Boolean(appState.inviteAuth && appState.inviteAuth.customHashHex);
+          const targetCode = hasCustom
+            ? ((appState.inviteAuth && appState.inviteAuth.codeHint) || INVITE_CODE_PLAIN)
+            : INVITE_CODE_PLAIN;
+          if (els.inviteCodeInput) {
+            els.inviteCodeInput.value = targetCode;
+            els.inviteCodeInput.focus();
+          }
+          showToast(`現在の招待コード「${targetCode}」を入力しました`, 'ph-key');
+        });
+        onEl(els.btnUpdateCustomInviteCode, 'click', async () => {
+          const val = els.inviteCodeInput ? els.inviteCodeInput.value : '';
+          await setCustomInviteCode(val, true);
+        });
+        onEl(els.btnResetInviteAuth, 'click', () => {
+          resetInviteAuthenticationToDefault(true);
+        });
+        onEl(els.btnCopyPagesConfig, 'click', () => {
+          const fields = readSyncFormFields();
+          const pagesOrigin = typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null'
+            ? window.location.origin
+            : 'https://<user>.github.io/<repo>/';
+          const activeCode = (appState.inviteAuth && appState.inviteAuth.codeHint) || INVITE_CODE_PLAIN;
+          const summary = [
+            `GitHub Pages Origin: ${pagesOrigin}`,
+            `Supabase URL: ${fields.url}`,
+            `Table: ${fields.table}`,
+            `Room ID: ${fields.roomId}`,
+            `Invite Code: ${activeCode}`
+          ].join('\n');
+          copyTextWithFallback(summary, 'GitHub Pages / Supabase 設定情報をコピーしました', '設定情報のコピーに失敗しました');
+        });
+        onEl(els.btnVerifyInviteCode, 'click', async () => {
+          const val = els.inviteCodeInput ? els.inviteCodeInput.value : '';
+          await verifyAndAuthenticateInviteCode(val, true);
+        });
+        onEl(els.inviteCodeInput, 'keydown', async (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            await verifyAndAuthenticateInviteCode(els.inviteCodeInput.value, true);
+          }
+        });
+
+        onEl(els.btnCopySyncSql, 'click', () => {
+          const sqlText = els.syncSqlSnippet ? els.syncSqlSnippet.textContent.trim() : '';
+          if (!sqlText) return;
+          copyTextWithFallback(sqlText, 'テーブル作成SQLをクリップボードにコピーしました', 'SQLのコピーに失敗しました');
+        });
+
+        onEl(els.btnConnectSync, 'click', async () => {
+          if (!isInviteAuthenticated()) {
+            const codeVal = els.inviteCodeInput ? els.inviteCodeInput.value : '';
+            const ok = await verifyAndAuthenticateInviteCode(codeVal, true);
+            if (!ok) return;
+          }
+          const fields = readSyncFormFields();
+          if (!fields.url || !fields.anonKey) {
+            showToast('Supabase URL と Anon Key を入力してください', 'ph-warning');
+            return;
+          }
+          appState.syncConfig = {
+            enabled: true,
+            url: fields.url,
+            anonKey: fields.anonKey,
+            table: fields.table,
+            roomId: fields.roomId
+          };
+          saveSyncConfigToLocalStorage();
+          updateSyncStatusUI('接続中...', 'bg-amber-400');
+          closeSyncModal();
+          startSyncLoop();
+          await pullStateFromSupabase(true);
+        });
+
+        onEl(els.btnDisconnectSync, 'click', () => {
+          stopSyncLoop();
+          appState.isSyncing = false;
+          appState.syncConfig.enabled = false;
+          saveSyncConfigToLocalStorage();
+          updateSyncStatusUI('ローカル保存（未接続）', 'bg-slate-500');
+          showToast('Supabase同期を切断しました', 'ph-cloud-slash');
+        });
+
+        onEl(els.btnSyncNow, 'click', async () => {
+          if (!isInviteAuthenticated()) {
+            const codeVal = els.inviteCodeInput ? els.inviteCodeInput.value : '';
+            const ok = await verifyAndAuthenticateInviteCode(codeVal, true);
+            if (!ok) return;
+          }
+          const fields = readSyncFormFields();
+          if (!fields.url || !fields.anonKey) {
+            showToast('先に URL と Anon Key を入力してください', 'ph-warning');
+            return;
+          }
+          appState.syncConfig = {
+            enabled: true,
+            url: fields.url,
+            anonKey: fields.anonKey,
+            table: fields.table,
+            roomId: fields.roomId
+          };
+          saveSyncConfigToLocalStorage();
+          if (!appState.syncTimerId) {
+            startSyncLoop();
+          } else {
+            await pullStateFromSupabase(true);
+          }
+        });
+
+        onEl(els.btnCancelBlackHole, 'click', closeBlackHoleModal);
+        onEl(els.btnConfirmBlackHole, 'click', confirmBlackHoleDeletion);
+
+        els.docCmdBtns.forEach((btn) => {
+          onEl(btn, 'click', () => {
+            if (els.astralDocEditor) els.astralDocEditor.focus();
+            const cmd = btn.dataset.docCmd;
+            const block = btn.dataset.docBlock;
+            try {
+              if (cmd) {
+                document.execCommand(cmd, false, null);
+              } else if (block) {
+                document.execCommand('formatBlock', false, block);
+              }
+            } catch (err) {
+              // 非対応環境フォールバック
+            }
+            if (els.docSaveIndicator) els.docSaveIndicator.textContent = '未保存の変更あり';
+          });
+        });
+
+        onEl(els.astralDocEditor, 'input', () => {
+          if (els.docSaveIndicator) els.docSaveIndicator.textContent = '保存中...';
+          if (appState.docAutoSaveTimerId) clearTimeout(appState.docAutoSaveTimerId);
+          appState.docAutoSaveTimerId = setTimeout(() => {
+            saveDocEditorContent(false);
+          }, 500);
+        });
+
+        onEl(els.btnSaveAndCloseDoc, 'click', () => saveDocEditorContent(true));
+
+        onEl(els.btnViewerZoomIn, 'click', () => {
+          appState.imageViewer.scale = Math.min(5, Number((appState.imageViewer.scale + 0.25).toFixed(2)));
+          updateImageViewerTransform();
+        });
+        onEl(els.btnViewerZoomOut, 'click', () => {
+          appState.imageViewer.scale = Math.max(0.25, Number((appState.imageViewer.scale - 0.25).toFixed(2)));
+          updateImageViewerTransform();
+        });
+        onEl(els.btnViewerFit, 'click', () => {
+          appState.imageViewer.scale = 1;
+          updateImageViewerTransform();
+        });
+        onEl(els.btnViewerReset, 'click', () => {
+          appState.imageViewer.scale = 1;
+          appState.imageViewer.rotation = 0;
+          updateImageViewerTransform();
+        });
+        onEl(els.btnViewerRotate, 'click', () => {
+          appState.imageViewer.rotation = (appState.imageViewer.rotation + 90) % 360;
+          updateImageViewerTransform();
+        });
+        onEl(els.btnCloseImageViewer, 'click', () => {
+          setModalVisibility(els.astralImageViewerModal, false);
+          appState.activeImagePlanetId = null;
+        });
+        onEl(els.imageViewerImg, 'error', () => {
+          if (els.imageViewerError) els.imageViewerError.classList.remove('hidden');
+        });
+        onEl(els.imageViewerImg, 'load', () => {
+          if (els.imageViewerError) els.imageViewerError.classList.add('hidden');
+        });
+        onEl(els.btnApplyViewerUrl, 'click', () => {
+          const planet = getPlanetById(appState.activeImagePlanetId);
+          if (!planet || !els.imageViewerUrlInput) return;
+          const url = els.imageViewerUrlInput.value.trim();
+          if (!url) return;
+          planet.imageUrl = url;
+          planet.updatedAt = Date.now();
+          if (els.imageViewerImg) els.imageViewerImg.src = url;
+          saveStateToLocalStorage(true);
+          showToast('画像URLを保存しました', 'ph-image');
+        });
+        onEl(els.btnUploadViewerFile, 'click', () => {
+          if (els.imageViewerFileInput) els.imageViewerFileInput.click();
+        });
+        onEl(els.imageViewerFileInput, 'change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          const planet = getPlanetById(appState.activeImagePlanetId);
+          if (!file || !planet) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = String(reader.result || '');
+            planet.imageUrl = dataUrl;
+            planet.updatedAt = Date.now();
+            if (els.imageViewerUrlInput) els.imageViewerUrlInput.value = dataUrl;
+            if (els.imageViewerImg) els.imageViewerImg.src = dataUrl;
+            saveStateToLocalStorage(true);
+            showToast('端末画像を惑星に保存しました', 'ph-image');
+          };
+          reader.readAsDataURL(file);
+          e.target.value = '';
+        });
+      }
+
+      let booted = false;
+      function bootAstralOcean() {
+        if (booted) return;
+        booted = true;
+        try {
+          reconcileSelection();
+          initViewportEngine();
+          bindAllEvents();
+          renderAllUI();
+          if (appState.syncConfig && appState.syncConfig.enabled && isInviteAuthenticated()) {
+            startSyncLoop();
+          }
+        } catch (err) {
+          try {
+            if (!viewport.canvas2D && els.viewportContainer) {
+              const c = document.createElement('canvas');
+              c.width = els.viewportContainer.clientWidth || window.innerWidth || 1024;
+              c.height = els.viewportContainer.clientHeight || window.innerHeight || 768;
+              viewport.canvas2D = c;
+              viewport.ctx2D = c.getContext('2d');
+              els.viewportContainer.appendChild(c);
+            }
+            appState.data.viewMode = '2d';
+            applyViewModeVisibility();
+            startRenderLoop();
+          } catch (innerErr) {
+            // 無視
+          }
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootAstralOcean);
+      } else {
+        bootAstralOcean();
+      }
+      window.addEventListener('load', () => {
+        bootAstralOcean();
+        if (appState.data.viewMode === '3d' && !viewport.renderer && ensureThreeSetup()) {
+          applyViewModeVisibility();
+          rebuild3DScene();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
