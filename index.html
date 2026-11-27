@@ -234,7 +234,7 @@
       <!-- 拡大縮小コントロール -->
       <div class="flex items-center gap-1 rounded-lg bg-black border border-zinc-800 px-2 py-1 text-xs">
         <button id="btnZoomOut" type="button" title="ズームアウト (-)" class="rounded p-0.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 transition"><i class="ph ph-minus text-xs"></i></button>
-        <input id="cameraZoomRange" type="range" min="25" max="1800" step="1" value="420" class="w-16 sm:w-20 accent-sky-400">
+        <input id="cameraZoomRange" type="range" min="25" max="1800" step="1" value="247" class="w-16 sm:w-20 accent-sky-400">
         <button id="btnZoomIn" type="button" title="ズームイン (+)" class="rounded p-0.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 transition"><i class="ph ph-plus text-xs"></i></button>
         <span id="cameraZoomPercent" class="w-10 text-right font-mono text-[11px] text-sky-300">100%</span>
         <button id="btnZoomReset" type="button" title="ズーム倍率リセット (100%)" class="rounded px-1.5 py-0.5 text-[10px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 transition">100%</button>
@@ -288,6 +288,21 @@
 
   <!-- 左サイドバー：エクスプローラー -->
   <aside id="explorerPanel" class="hud-element fixed top-20 bottom-4 left-3 z-20 w-72 max-w-[85vw] flex flex-col rounded-xl bg-zinc-950/90 backdrop-blur-md border border-zinc-800 overflow-hidden transition-transform duration-200">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
+      <div class="flex items-center gap-1.5">
+        <i class="ph ph-compass text-sky-400 text-sm"></i>
+        <span class="font-semibold text-xs tracking-wide text-zinc-100">エクスプローラー</span>
+      </div>
+      <div class="flex items-center gap-1">
+        <button id="btnExpandAllPlanets" type="button" title="すべて展開" class="rounded p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition">
+          <i class="ph ph-arrows-out-line-vertical text-xs"></i>
+        </button>
+        <button id="btnCollapseAllPlanets" type="button" title="すべて折りたたむ" class="rounded p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition">
+          <i class="ph ph-arrows-in-line-vertical text-xs"></i>
+        </button>
+        <button id="btnCloseExplorer" type="button" title="閉じる" class="rounded p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition">
+          <i class="ph ph-x text-xs"></i>
+        </button>
       </div>
     </div>
 
@@ -665,6 +680,8 @@
       }
 
       const BASE_DISTANCE = 420;
+      const DEFAULT_ZOOM_SCALE = 1.7;
+      const DEFAULT_CAMERA_DISTANCE = Math.round(BASE_DISTANCE / DEFAULT_ZOOM_SCALE);
 
       // =========================================================================
       // 2. Null安全DOMヘルパー・ユーティリティ・太陽系初期状態・正規化
@@ -752,7 +769,7 @@
           viewMode: '3d',
           orbitPaused: false,
           orbitSpeed: 0.5,
-          cameraDistance: BASE_DISTANCE,
+          cameraDistance: DEFAULT_CAMERA_DISTANCE,
           selectedKind: 'star',
           selectedId: 'star-sun',
           lockedTarget: null,
@@ -1554,11 +1571,40 @@
           Number(planet.orbitAngle || 0) +
           elapsedSeconds * Number(planet.orbitSpeed || 0.25) * Number(appState.data.orbitSpeed || 0.5);
         const r = Number(planet.orbitRadius || 40);
-        const inc = Number(planet.inclination || 0);
-        const x = (basePos.x || 0) + Math.cos(angle) * r;
-        const z = (basePos.z || 0) + Math.sin(angle) * r;
-        const y = (basePos.y || 0) + Math.sin(angle * 1.5) * Math.sin(inc) * r * 0.45;
-        return { x, y, z, angle };
+        const tiltX = Number(planet.orbitTiltX || 0);
+        const tiltZ = Number(planet.orbitTiltZ || 0);
+
+        // 真円状の公転軌道上のローカル座標（半径 r の円）
+        let lx = Math.cos(angle) * r;
+        let ly = 0;
+        let lz = Math.sin(angle) * r;
+
+        // X軸周りの軌道傾斜角（平行以外の角度）を適用
+        if (tiltX !== 0) {
+          const cosX = Math.cos(tiltX);
+          const sinX = Math.sin(tiltX);
+          const ny = ly * cosX - lz * sinX;
+          const nz = ly * sinX + lz * cosX;
+          ly = ny;
+          lz = nz;
+        }
+
+        // Z軸周りの軌道傾斜角（平行以外の角度）を適用
+        if (tiltZ !== 0) {
+          const cosZ = Math.cos(tiltZ);
+          const sinZ = Math.sin(tiltZ);
+          const nx = lx * cosZ - ly * sinZ;
+          const ny = lx * sinZ + ly * cosZ;
+          lx = nx;
+          ly = ny;
+        }
+
+        return {
+          x: (basePos.x || 0) + lx,
+          y: (basePos.y || 0) + ly,
+          z: (basePos.z || 0) + lz,
+          angle
+        };
       }
 
       function reconcileSelection() {
@@ -1605,7 +1651,7 @@
         pointerNDC: null,
         cameraTarget: { x: 0, y: 0, z: 0 },
         cameraSpherical: {
-          radius: BASE_DISTANCE,
+          radius: DEFAULT_CAMERA_DISTANCE,
           phi: Math.PI * 0.36,
           theta: 0.25
         },
@@ -1735,7 +1781,7 @@
           appState.data.viewMode = '2d';
         }
 
-        viewport.cameraSpherical.radius = Number(appState.data.cameraDistance || BASE_DISTANCE);
+        viewport.cameraSpherical.radius = Number(appState.data.cameraDistance || DEFAULT_CAMERA_DISTANCE);
         syncZoomUI();
         applyViewModeVisibility();
         rebuild3DScene();
@@ -1993,6 +2039,28 @@
           const colorHex = new THREE.Color(star.color || '#f59e0b');
           const starTex = createGeometricSurfaceTexture(star, true);
 
+          // 公転軌道面の法線ベクトル（＝公転軸）に合わせて自転軸グループを傾ける
+          const spinAxisGroup = new THREE.Group();
+          const childPlanets = getPlanetsForStar(star.id);
+          let sumTiltX = 0;
+          let sumTiltZ = 0;
+          let tiltCount = 0;
+          childPlanets.forEach((p) => {
+            const tx = Number(p.orbitTiltX || 0);
+            const tz = Number(p.orbitTiltZ || 0);
+            if (tx !== 0 || tz !== 0) {
+              sumTiltX += tx;
+              sumTiltZ += tz;
+              tiltCount += 1;
+            }
+          });
+          const avgTiltX = tiltCount > 0 ? sumTiltX / tiltCount : 0;
+          const avgTiltZ = tiltCount > 0 ? sumTiltZ / tiltCount : 0;
+          spinAxisGroup.rotation.order = 'ZYX';
+          spinAxisGroup.rotation.x = avgTiltX;
+          spinAxisGroup.rotation.z = avgTiltZ;
+          group.add(spinAxisGroup);
+
           const coreGeo = new THREE.SphereGeometry(r, 48, 32);
           const coreMat = new THREE.MeshBasicMaterial({
             color: starTex ? 0xffffff : colorHex,
@@ -2000,7 +2068,7 @@
           });
           const core = new THREE.Mesh(coreGeo, coreMat);
           core.userData = { kind: 'star', id: star.id };
-          group.add(core);
+          spinAxisGroup.add(core);
 
           const haloGeo = new THREE.SphereGeometry(r * 1.24, 32, 24);
           const haloMat = new THREE.MeshBasicMaterial({
@@ -2010,7 +2078,7 @@
             depthWrite: false
           });
           const halo = new THREE.Mesh(haloGeo, haloMat);
-          group.add(halo);
+          spinAxisGroup.add(halo);
 
           const outerAuraGeo = new THREE.RingGeometry(r * 1.32, r * 1.4, 64);
           const outerAuraMat = new THREE.MeshBasicMaterial({
@@ -2021,7 +2089,7 @@
           });
           const outerAura = new THREE.Mesh(outerAuraGeo, outerAuraMat);
           outerAura.rotation.x = Math.PI / 2;
-          group.add(outerAura);
+          spinAxisGroup.add(outerAura);
 
           const ringGeo = new THREE.RingGeometry(r * 1.48, r * 1.62, 64);
           const ringMat = new THREE.MeshBasicMaterial({
@@ -2033,12 +2101,12 @@
           const ring = new THREE.Mesh(ringGeo, ringMat);
           ring.rotation.x = Math.PI / 2;
           ring.visible = appState.data.selectedKind === 'star' && appState.data.selectedId === star.id;
-          group.add(ring);
+          spinAxisGroup.add(ring);
 
           const pos = star.position || { x: 0, y: 0, z: 0 };
           group.position.set(pos.x || 0, pos.y || 0, pos.z || 0);
           viewport.scene.add(group);
-          viewport.starMeshes.set(star.id, { group, core, halo, ring });
+          viewport.starMeshes.set(star.id, { group, spinAxisGroup, core, halo, ring });
         });
 
         appState.data.planets.forEach((planet) => {
@@ -2089,16 +2157,39 @@
             group.add(saturnRing);
           }
 
-          const segments = 96;
+          const segments = 128;
           const pts = [];
-          const inc = Number(planet.inclination || 0);
+          const tiltX = Number(planet.orbitTiltX || 0);
+          const tiltZ = Number(planet.orbitTiltZ || 0);
+          const cosX = Math.cos(tiltX);
+          const sinX = Math.sin(tiltX);
+          const cosZ = Math.cos(tiltZ);
+          const sinZ = Math.sin(tiltZ);
+
           for (let i = 0; i <= segments; i++) {
             const a = (i / segments) * Math.PI * 2;
+            let lx = Math.cos(a) * orbitR;
+            let ly = 0;
+            let lz = Math.sin(a) * orbitR;
+
+            if (tiltX !== 0) {
+              const ny = ly * cosX - lz * sinX;
+              const nz = ly * sinX + lz * cosX;
+              ly = ny;
+              lz = nz;
+            }
+            if (tiltZ !== 0) {
+              const nx = lx * cosZ - ly * sinZ;
+              const ny = lx * sinZ + ly * cosZ;
+              lx = nx;
+              ly = ny;
+            }
+
             pts.push(
               new THREE.Vector3(
-                (center.x || 0) + Math.cos(a) * orbitR,
-                (center.y || 0) + Math.sin(a * 1.5) * Math.sin(inc) * orbitR * 0.45,
-                (center.z || 0) + Math.sin(a) * orbitR
+                (center.x || 0) + lx,
+                (center.y || 0) + ly,
+                (center.z || 0) + lz
               )
             );
           }
@@ -2136,6 +2227,30 @@
           if (idx === 0 && viewport.sunLight) {
             viewport.sunLight.position.set(pos.x || 0, pos.y || 0, pos.z || 0);
           }
+
+          // 所属惑星の公転軌道傾斜角に合わせて恒星の自転軸（ローカルY軸）を同期
+          const childPlanets = getPlanetsForStar(star.id);
+          let sumTiltX = 0;
+          let sumTiltZ = 0;
+          let tiltCount = 0;
+          childPlanets.forEach((p) => {
+            const tx = Number(p.orbitTiltX || 0);
+            const tz = Number(p.orbitTiltZ || 0);
+            if (tx !== 0 || tz !== 0) {
+              sumTiltX += tx;
+              sumTiltZ += tz;
+              tiltCount += 1;
+            }
+          });
+          const targetTiltX = tiltCount > 0 ? sumTiltX / tiltCount : 0;
+          const targetTiltZ = tiltCount > 0 ? sumTiltZ / tiltCount : 0;
+          if (entry.spinAxisGroup) {
+            entry.spinAxisGroup.rotation.order = 'ZYX';
+            entry.spinAxisGroup.rotation.x = targetTiltX;
+            entry.spinAxisGroup.rotation.z = targetTiltZ;
+          }
+
+          // 公転軌道軸（spinAxisGroupのローカルY軸）を中心に自転
           entry.core.rotation.y += dt * 0.35;
           entry.halo.rotation.y -= dt * 0.22;
           entry.halo.rotation.x += dt * 0.14;
@@ -2432,7 +2547,7 @@
       // 6. ビューポート操作（回転・パン・ズーム・クリック選択＆ダブルクリック開く）
       // =========================================================================
       function setCameraDistance(dist, persist = true) {
-        const clamped = Math.min(1800, Math.max(25, Number(dist) || BASE_DISTANCE));
+        const clamped = Math.min(1800, Math.max(25, Number(dist) || DEFAULT_CAMERA_DISTANCE));
         viewport.cameraSpherical.radius = clamped;
         appState.data.cameraDistance = clamped;
         syncZoomUI();
@@ -2440,9 +2555,9 @@
       }
 
       function syncZoomUI() {
-        const r = Number(viewport.cameraSpherical.radius) || BASE_DISTANCE;
+        const r = Number(viewport.cameraSpherical.radius) || DEFAULT_CAMERA_DISTANCE;
         if (els.cameraZoomRange) els.cameraZoomRange.value = String(Math.round(r));
-        const pct = Math.max(14, Math.min(1700, Math.round((BASE_DISTANCE / r) * 100)));
+        const pct = Math.max(14, Math.min(1700, Math.round((DEFAULT_CAMERA_DISTANCE / r) * 100)));
         if (els.cameraZoomPercent) els.cameraZoomPercent.textContent = `${pct}%`;
       }
 
@@ -2883,12 +2998,23 @@
 
         if (!sun || sun.id !== ignoreStarId) {
           const dxSun = x - (sunPos.x || 0);
+          const dySun = y - (sunPos.y || 0);
           const dzSun = z - (sunPos.z || 0);
-          const distSun = Math.hypot(dxSun, dzSun);
-          if (distSun < minSolarDist) {
-            const angle = distSun > 1e-4 ? Math.atan2(dzSun, dxSun) : (appState.data.stars.length + 1) * 1.15;
-            x = Math.round((sunPos.x || 0) + Math.cos(angle) * minSolarDist);
-            z = Math.round((sunPos.z || 0) + Math.sin(angle) * minSolarDist);
+          const distSun3D = Math.hypot(dxSun, dySun, dzSun);
+          if (distSun3D < minSolarDist) {
+            const horizDist = Math.hypot(dxSun, dzSun);
+            const angle = horizDist > 1e-4 ? Math.atan2(dzSun, dxSun) : (appState.data.stars.length + 1) * 1.15;
+            const elevation = distSun3D > 1e-4 ? Math.asin(clampVal(dySun / distSun3D, -0.85, 0.85)) : 0.42;
+            const cosEl = Math.cos(elevation);
+            x = Math.round((sunPos.x || 0) + Math.cos(angle) * minSolarDist * cosEl);
+            y = Math.round((sunPos.y || 0) + Math.sin(elevation) * minSolarDist);
+            z = Math.round((sunPos.z || 0) + Math.sin(angle) * minSolarDist * cosEl);
+            adjusted = true;
+          }
+          // 太陽系以外の恒星は太陽系の基準平面（Y = sunPos.y）と同一平面にならないようYオフセットを確保
+          if (Math.abs(y - (sunPos.y || 0)) < 55) {
+            const signY = y >= (sunPos.y || 0) ? 1 : -1;
+            y = Math.round((sunPos.y || 0) + signY * (75 + ((appState.data.stars.length % 3) * 35)));
             adjusted = true;
           }
         }
@@ -2900,10 +3026,11 @@
             const op = other.position || { x: 0, y: 0, z: 0 };
             const clearance = other.id === 'star-sun' ? minSolarDist : (Number(other.radius) || 14) + 120;
             const dx = x - (op.x || 0);
+            const dy = y - (op.y || 0);
             const dz = z - (op.z || 0);
-            const d = Math.hypot(dx, dz);
+            const d = Math.hypot(dx, dy, dz);
             if (d < clearance) {
-              const ang = d > 1e-4 ? Math.atan2(dz, dx) : (pass + 1) * 1.57;
+              const ang = Math.hypot(dx, dz) > 1e-4 ? Math.atan2(dz, dx) : (pass + 1) * 1.57;
               x = Math.round((op.x || 0) + Math.cos(ang) * clearance);
               z = Math.round((op.z || 0) + Math.sin(ang) * clearance);
               collided = true;
@@ -2914,7 +3041,7 @@
         }
 
         if (adjusted && notifyIfAdjusted) {
-          showToast('太陽系内には恒星を配置できないため、外縁の安全領域へ移動しました', 'ph-shield-warning');
+          showToast('太陽系外縁の立体安全領域へ座標を調整しました', 'ph-shield-warning');
         }
 
         return { x: Math.round(x), y: Math.round(y), z: Math.round(z) };
@@ -2929,16 +3056,22 @@
         for (let attempt = 0; attempt < 48; attempt++) {
           const ring = Math.floor(attempt / 8);
           const angle = idx * 1.35 + attempt * 0.78;
-          const dist = minSolarDist + 45 + ring * 95;
+          // 太陽系基準平面（Y=0）から上下に大きく傾斜した立体角（仰角 ±24°〜±58°）で配置
+          const signY = ((idx + attempt) % 2 === 0) ? 1 : -1;
+          const elevationDeg = 24 + ((idx * 13 + attempt * 11) % 35);
+          const elevationRad = signY * (elevationDeg * Math.PI) / 180;
+          const dist3D = minSolarDist + 55 + ring * 95;
+          const horizDist = Math.cos(elevationRad) * dist3D;
+
           const candidate = {
-            x: Math.round((sunPos.x || 0) + Math.cos(angle) * dist),
-            y: Math.round((sunPos.y || 0) + (((attempt % 3) - 1) * 24)),
-            z: Math.round((sunPos.z || 0) + Math.sin(angle) * dist)
+            x: Math.round((sunPos.x || 0) + Math.cos(angle) * horizDist),
+            y: Math.round((sunPos.y || 0) + Math.sin(elevationRad) * dist3D),
+            z: Math.round((sunPos.z || 0) + Math.sin(angle) * horizDist)
           };
 
           const tooCloseToStar = appState.data.stars.some((s) => {
             const sp = s.position || { x: 0, y: 0, z: 0 };
-            const d = Math.hypot(candidate.x - (sp.x || 0), candidate.z - (sp.z || 0));
+            const d = Math.hypot(candidate.x - (sp.x || 0), candidate.y - (sp.y || 0), candidate.z - (sp.z || 0));
             const requiredClearance = s.id === 'star-sun' ? minSolarDist : (Number(s.radius) || 14) + 120;
             return d < requiredClearance;
           });
@@ -2946,7 +3079,7 @@
           const insideAnyOrbit = appState.data.planets.some((p) => {
             const pStar = getStarById(p.starId) || sun;
             const center = pStar && pStar.position ? pStar.position : { x: 0, y: 0, z: 0 };
-            const d = Math.hypot(candidate.x - (center.x || 0), candidate.z - (center.z || 0));
+            const d = Math.hypot(candidate.x - (center.x || 0), candidate.y - (center.y || 0), candidate.z - (center.z || 0));
             return d < Number(p.orbitRadius || 0) + 38;
           });
 
@@ -2955,11 +3088,12 @@
           }
         }
 
+        const fallbackSign = idx % 2 === 0 ? 1 : -1;
         return enforceStarExclusionRule(
           {
-            x: (sunPos.x || 0) + minSolarDist + 90,
-            y: 0,
-            z: (sunPos.z || 0)
+            x: (sunPos.x || 0) + minSolarDist + 80,
+            y: (sunPos.y || 0) + fallbackSign * 145,
+            z: (sunPos.z || 0) + 65
           },
           null,
           false
@@ -3118,17 +3252,21 @@
               <span class="text-zinc-400">恒星サイズ</span>
               <span id="inspStarRadiusVal" class="font-mono text-amber-300">${Number(star.radius || 16).toFixed(1)}</span>
             </div>
-            <input id="inspStarRadius" type="range" min="8" max="32" step="0.5" value="${Number(star.radius || 16)}" class="w-full accent-amber-400">
+            <input id="inspStarRadius" type="range" min="8" max="28" step="0.5" value="${Number(star.radius || 16)}" class="w-full accent-amber-400">
           </div>
 
-          <div class="grid grid-cols-2 gap-2.5">
+          <div class="grid grid-cols-3 gap-2">
             <div>
               <label class="block text-[11px] text-zinc-400 mb-1">空間 X</label>
-              <input id="inspStarPosX" type="number" step="10" value="${Math.round(pos.x || 0)}" ${star.id === 'star-sun' ? 'disabled' : ''} class="w-full rounded-lg bg-black border border-zinc-800 px-2.5 py-1.5 font-mono text-xs text-zinc-100 disabled:opacity-50 focus:outline-none focus:border-sky-400">
+              <input id="inspStarPosX" type="number" step="10" value="${Math.round(pos.x || 0)}" ${star.id === 'star-sun' ? 'disabled' : ''} class="w-full rounded-lg bg-black border border-zinc-800 px-2 py-1.5 font-mono text-xs text-zinc-100 disabled:opacity-50 focus:outline-none focus:border-sky-400">
+            </div>
+            <div>
+              <label class="block text-[11px] text-zinc-400 mb-1">空間 Y</label>
+              <input id="inspStarPosY" type="number" step="10" value="${Math.round(pos.y || 0)}" ${star.id === 'star-sun' ? 'disabled' : ''} class="w-full rounded-lg bg-black border border-zinc-800 px-2 py-1.5 font-mono text-xs text-zinc-100 disabled:opacity-50 focus:outline-none focus:border-sky-400">
             </div>
             <div>
               <label class="block text-[11px] text-zinc-400 mb-1">空間 Z</label>
-              <input id="inspStarPosZ" type="number" step="10" value="${Math.round(pos.z || 0)}" ${star.id === 'star-sun' ? 'disabled' : ''} class="w-full rounded-lg bg-black border border-zinc-800 px-2.5 py-1.5 font-mono text-xs text-zinc-100 disabled:opacity-50 focus:outline-none focus:border-sky-400">
+              <input id="inspStarPosZ" type="number" step="10" value="${Math.round(pos.z || 0)}" ${star.id === 'star-sun' ? 'disabled' : ''} class="w-full rounded-lg bg-black border border-zinc-800 px-2 py-1.5 font-mono text-xs text-zinc-100 disabled:opacity-50 focus:outline-none focus:border-sky-400">
             </div>
           </div>
 
@@ -3173,11 +3311,12 @@
           if (star.id === 'star-sun') return;
           pushUndoCheckpoint();
           const xInput = container.querySelector('#inspStarPosX');
+          const yInput = container.querySelector('#inspStarPosY');
           const zInput = container.querySelector('#inspStarPosZ');
           const nextPos = enforceStarExclusionRule(
             {
               x: Number(xInput ? xInput.value : pos.x || 0),
-              y: Number(pos.y || 0),
+              y: Number(yInput ? yInput.value : pos.y || 0),
               z: Number(zInput ? zInput.value : pos.z || 0)
             },
             star.id,
@@ -3185,11 +3324,13 @@
           );
           star.position = nextPos;
           if (xInput) xInput.value = String(nextPos.x);
+          if (yInput) yInput.value = String(nextPos.y);
           if (zInput) zInput.value = String(nextPos.z);
           rebuild3DScene();
           saveStateToLocalStorage(true);
         };
         onEl(container.querySelector('#inspStarPosX'), 'change', applyStarCoords);
+        onEl(container.querySelector('#inspStarPosY'), 'change', applyStarCoords);
         onEl(container.querySelector('#inspStarPosZ'), 'change', applyStarCoords);
         onEl(container.querySelector('#inspStarNote'), 'focus', () => pushUndoCheckpoint());
         onEl(container.querySelector('#inspStarNote'), 'input', (e) => {
@@ -3507,29 +3648,47 @@
         if (els.newPlanetType) els.newPlanetType.value = 'document';
         if (els.newPlanetRadius) els.newPlanetRadius.value = '3.8';
         if (els.newPlanetRadiusValue) els.newPlanetRadiusValue.textContent = '3.8';
-        if (els.newPlanetOrbit) els.newPlanetOrbit.value = '48';
-        if (els.newPlanetOrbitValue) els.newPlanetOrbitValue.textContent = '48';
-        if (els.newPlanetImageUrl) els.newPlanetImageUrl.value = '';
-        if (els.newPlanetImageFile) els.newPlanetImageFile.value = '';
-        if (els.newPlanetImageFileName) els.newPlanetImageFileName.textContent = '未選択';
+        const defaultOrbit = Math.min(235, 36 + getPlanetsForStar(targetStar ? targetStar.id : 'star-sun').length * 14);
+        if (els.newPlanetOrbit) els.newPlanetOrbit.value = String(defaultOrbit);
+        if (els.newPlanetOrbitValue) els.newPlanetOrbitValue.textContent = String(defaultOrbit);
         if (els.newPlanetImageSection) els.newPlanetImageSection.classList.add('hidden');
+        if (els.newPlanetImageUrl) els.newPlanetImageUrl.value = '';
+        if (els.newPlanetImageFileName) els.newPlanetImageFileName.textContent = '未選択';
         setModalVisibility(els.newPlanetModal, true);
-        if (els.newPlanetName) els.newPlanetName.focus();
+        if (els.newPlanetName) {
+          setTimeout(() => els.newPlanetName && els.newPlanetName.focus(), 50);
+        }
       }
 
       function closeNewPlanetModal() {
         setModalVisibility(els.newPlanetModal, false);
       }
 
+      function generateNonParallelOrbitAngles(starId) {
+        const isSun = starId === 'star-sun';
+        const signX = Math.random() < 0.5 ? -1 : 1;
+        const signZ = Math.random() < 0.5 ? -1 : 1;
+        // 太陽系の基準軌道平面（水平面）に対して平行にならない傾斜角（18°〜68°）を生成
+        const degX = isSun ? (16 + Math.random() * 34) : (24 + Math.random() * 46);
+        const degZ = isSun ? (10 + Math.random() * 28) : (18 + Math.random() * 44);
+        return {
+          inclination: Number((0.08 + Math.random() * 0.28).toFixed(3)),
+          orbitTiltX: Number((signX * (degX * Math.PI) / 180).toFixed(3)),
+          orbitTiltZ: Number((signZ * (degZ * Math.PI) / 180).toFixed(3))
+        };
+      }
+
       function createPlanetRecord({ name, starId, type, radius, orbitRadius, imageUrl, contentHtml }) {
         pushUndoCheckpoint();
         const star = getStarById(starId) || appState.data.stars[0];
+        const targetStarId = star ? star.id : 'star-sun';
         const normalizedType = type === 'image' ? 'image' : 'document';
         const defaultColor = normalizedType === 'image' ? '#f472b6' : '#38bdf8';
         const safeName = String(name || '').trim() || (normalizedType === 'image' ? '新規画像.png' : '新規メモ.md');
+        const orbitAngles = generateNonParallelOrbitAngles(targetStarId);
         const planet = {
           id: `planet-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          starId: star ? star.id : 'star-sun',
+          starId: targetStarId,
           name: safeName,
           type: normalizedType,
           color: defaultColor,
@@ -3537,7 +3696,9 @@
           orbitRadius: Number(orbitRadius) || 48,
           orbitSpeed: 0.24,
           orbitAngle: Math.random() * Math.PI * 2,
-          inclination: 0.02,
+          inclination: orbitAngles.inclination,
+          orbitTiltX: orbitAngles.orbitTiltX,
+          orbitTiltZ: orbitAngles.orbitTiltZ,
           contentHtml: normalizedType === 'document' ? (contentHtml || `<h1>${escapeHtml(safeName)}</h1><p>新しい幾何学惑星ドキュメントです。</p>`) : '',
           imageUrl: normalizedType === 'image' ? (imageUrl || createDefaultSampleImageDataUrl(safeName, '#09090b', defaultColor)) : '',
           updatedAt: Date.now()
@@ -3973,7 +4134,7 @@
           viewport.pan2D = { x: 0, y: 0 };
           viewport.cameraSpherical.phi = Math.PI * 0.36;
           viewport.cameraSpherical.theta = 0.25;
-          setCameraDistance(BASE_DISTANCE, true);
+          setCameraDistance(DEFAULT_CAMERA_DISTANCE, true);
           updateLockStatusUI();
           showToast('視点をリセットしました', 'ph-compass');
         });
@@ -3992,7 +4153,7 @@
           setCameraDistance(viewport.cameraSpherical.radius * 1.18, true);
         });
         onEl(els.btnZoomReset, 'click', () => {
-          setCameraDistance(BASE_DISTANCE, true);
+          setCameraDistance(DEFAULT_CAMERA_DISTANCE, true);
         });
 
         onEl(els.tabStarTree, 'click', () => {
