@@ -132,6 +132,46 @@
     input[type="range"] {
       cursor: pointer;
     }
+
+    /* カラーピッカーポップオーバー（右下部へ重ね表示） */
+    #colorPickerPopover {
+      position: fixed;
+      right: 1.25rem;
+      bottom: 1.25rem;
+      z-index: 45;
+      width: 19rem;
+      max-width: calc(100vw - 2rem);
+    }
+
+    .color-slider-track {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 1.5rem;
+      border-radius: 9999px;
+      outline: none;
+    }
+
+    .color-slider-track::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 1.35rem;
+      height: 1.35rem;
+      border-radius: 9999px;
+      background: rgba(9, 9, 11, 0.35);
+      border: 2.5px solid #09090b;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+    }
+
+    .color-slider-track::-moz-range-thumb {
+      width: 1.35rem;
+      height: 1.35rem;
+      border-radius: 9999px;
+      background: rgba(9, 9, 11, 0.35);
+      border: 2.5px solid #09090b;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body class="bg-black text-zinc-100 antialiased">
@@ -158,23 +198,19 @@
         <i class="ph ph-sidebar-simple text-base"></i>
       </button>
 
-      <!-- 3D / 2D 切替 -->
-      <div class="flex items-center rounded-lg bg-black border border-zinc-800 p-0.5 text-[11px] font-medium">
-        <button id="btnMode3D" type="button" class="rounded-md px-2.5 py-1 bg-zinc-900 text-sky-300 border border-sky-500/40 transition flex items-center gap-1">
-          <i class="ph ph-polygon text-xs"></i>
-          <span>3D</span>
-        </button>
-        <button id="btnMode2D" type="button" class="rounded-md px-2.5 py-1 text-zinc-500 hover:text-zinc-200 transition flex items-center gap-1">
-          <i class="ph ph-diamond text-xs"></i>
-          <span>2D</span>
-        </button>
-      </div>
+      <!-- 戻す・進むタブ（左から2番目・3番目） -->
+      <button id="btnUndoAction" type="button" disabled title="操作を巻き戻す (Ctrl+Z / ⌘Z)" class="rounded-lg bg-black hover:bg-zinc-900 border border-zinc-800 p-2 text-zinc-200 disabled:opacity-35 disabled:pointer-events-none transition flex items-center justify-center">
+        <i class="ph ph-arrow-u-up-left text-base text-sky-400"></i>
+      </button>
+      <button id="btnRedoAction" type="button" disabled title="やり直し (Ctrl+Y / ⌘Shift+Z)" class="rounded-lg bg-black hover:bg-zinc-900 border border-zinc-800 p-2 text-zinc-200 disabled:opacity-35 disabled:pointer-events-none transition flex items-center justify-center">
+        <i class="ph ph-arrow-u-up-right text-base text-zinc-400"></i>
+      </button>
 
       <!-- 検索 -->
       <div class="relative">
         <div class="flex items-center rounded-lg bg-black border border-zinc-800 px-2.5 py-1.5 w-36 sm:w-48 focus-within:border-sky-400 transition">
           <i class="ph ph-magnifying-glass text-zinc-500 text-xs mr-1.5"></i>
-          <input id="searchInput" type="text" placeholder="恒星・惑星を検索..." class="w-full bg-transparent text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none">
+          <input id="searchInput" type="text" class="w-full bg-transparent text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none">
           <button id="btnClearSearch" type="button" class="hidden text-zinc-500 hover:text-zinc-300 text-xs">
             <i class="ph ph-x"></i>
           </button>
@@ -183,22 +219,6 @@
       </div>
 
       <div class="hidden sm:block h-5 w-px bg-zinc-800 mx-0.5"></div>
-
-      <button id="btnAddStar" type="button" class="flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-amber-500/40 px-2.5 py-1.5 font-medium text-amber-300 text-xs transition">
-        <i class="ph ph-sun text-sm"></i>
-        <span>新規フォルダ</span>
-      </button>
-
-      <button id="btnOpenNewPlanetModal" type="button" class="flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-sky-500/40 px-2.5 py-1.5 font-medium text-sky-300 text-xs transition">
-        <i class="ph ph-planet text-sm"></i>
-        <span>新規ファイル</span>
-      </button>
-
-      <label class="flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 font-medium text-zinc-200 text-xs cursor-pointer transition">
-        <i class="ph ph-folder-open text-sm text-sky-400"></i>
-        <span>読込</span>
-        <input id="localFileInput" type="file" multiple class="hidden">
-      </label>
 
       <!-- 公転一時停止・速度プリセット -->
       <div class="hidden xl:flex items-center gap-1 rounded-lg bg-black border border-zinc-800 px-1.5 py-1 text-xs">
@@ -211,22 +231,52 @@
         <button data-speed-preset="2" type="button" class="speed-preset-btn rounded px-1.5 py-0.5 text-[11px] font-mono text-zinc-500 hover:text-zinc-200">2x</button>
       </div>
 
-      <!-- 同期＆招待コード認証ボタン -->
-      <button id="btnOpenSyncModal" type="button" title="招待コード認証・同期接続" class="flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 px-2.5 py-1.5 font-medium text-zinc-200 text-xs transition">
+      <!-- 拡大縮小コントロール -->
+      <div class="flex items-center gap-1 rounded-lg bg-black border border-zinc-800 px-2 py-1 text-xs">
+        <button id="btnZoomOut" type="button" title="ズームアウト (-)" class="rounded p-0.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 transition"><i class="ph ph-minus text-xs"></i></button>
+        <input id="cameraZoomRange" type="range" min="25" max="1800" step="1" value="420" class="w-16 sm:w-20 accent-sky-400">
+        <button id="btnZoomIn" type="button" title="ズームイン (+)" class="rounded p-0.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 transition"><i class="ph ph-plus text-xs"></i></button>
+        <span id="cameraZoomPercent" class="w-10 text-right font-mono text-[11px] text-sky-300">100%</span>
+        <button id="btnZoomReset" type="button" title="ズーム倍率リセット (100%)" class="rounded px-1.5 py-0.5 text-[10px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 transition">100%</button>
+      </div>
+
+      <!-- 新規フォルダ・新規ファイル・読込・自由視点・視点リセット・同期・3D/2D・画面非表示 -->
+      <button id="btnAddStar" type="button" title="新規フォルダ" class="flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-amber-500/40 p-1.5 font-medium text-amber-300 text-xs transition">
+        <i class="ph ph-sun text-base"></i>
+      </button>
+
+      <button id="btnOpenNewPlanetModal" type="button" title="新規ファイル" class="flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-sky-500/40 p-1.5 font-medium text-sky-300 text-xs transition">
+        <i class="ph ph-planet text-base"></i>
+      </button>
+
+      <label title="読込" class="flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 p-1.5 font-medium text-zinc-200 text-xs cursor-pointer transition">
+        <i class="ph ph-folder-open text-base text-sky-400"></i>
+        <input id="localFileInput" type="file" multiple class="hidden">
+      </label>
+
+      <button id="btnOpenSyncModal" type="button" title="招待コード認証・同期接続" class="flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 px-2 py-1.5 font-medium text-zinc-200 text-xs transition">
         <span id="syncStatusDot" class="h-2 w-2 rounded-full bg-zinc-600"></span>
-        <i class="ph ph-cloud-check text-sm text-sky-400"></i>
-        <span id="syncStatusLabel">同期オフ</span>
-      </button>
-      <button id="btnLockInvite" type="button" title="招待認証ロック / 解除" class="flex items-center gap-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-2 py-1.5 text-zinc-300 text-xs transition">
-        <i id="inviteLockIcon" class="ph ph-lock text-sm text-amber-300"></i>
+        <i class="ph ph-cloud-check text-base text-sky-400"></i>
       </button>
 
-      <button id="btnResetView" type="button" title="視点をリセット" class="flex items-center gap-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-2.5 py-1.5 text-zinc-200 text-xs transition">
-        <i class="ph ph-compass text-sm text-sky-400"></i>
-        <span class="hidden sm:inline">視点</span>
+      <button id="btnUnlockCamera" type="button" title="視点ロックを解除" class="rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-sky-500/40 p-1.5 text-sky-300 transition flex items-center justify-center">
+        <i class="ph ph-lock-open text-base"></i>
       </button>
 
-      <button id="btnToggleInspector" type="button" title="インスペクターを開閉" class="rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 p-1.5 text-zinc-200 transition">
+      <button id="btnResetView" type="button" title="視点をリセット" class="flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 p-1.5 text-zinc-200 text-xs transition">
+        <i class="ph ph-compass text-base text-sky-400"></i>
+      </button>
+
+      <div class="flex items-center rounded-lg bg-black border border-zinc-800 p-0.5 text-[11px] font-medium">
+        <button id="btnMode3D" type="button" title="3D表示" class="rounded-md px-2 py-1 bg-zinc-900 text-sky-300 border border-sky-500/40 transition flex items-center justify-center">
+          <i class="ph ph-polygon text-sm"></i>
+        </button>
+        <button id="btnMode2D" type="button" title="2D表示" class="rounded-md px-2 py-1 text-zinc-500 hover:text-zinc-200 transition flex items-center justify-center">
+          <i class="ph ph-diamond text-sm"></i>
+        </button>
+      </div>
+
+      <button id="btnToggleInspector" type="button" title="恒星・惑星インスペクターを開閉" class="rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 p-1.5 text-sky-400 transition flex items-center justify-center">
         <i class="ph ph-sliders-horizontal text-sm"></i>
       </button>
 
@@ -237,16 +287,7 @@
   </header>
 
   <!-- 左サイドバー：エクスプローラー -->
-  <aside id="explorerPanel" class="hud-element fixed top-20 bottom-16 left-3 z-20 w-72 max-w-[85vw] flex flex-col rounded-xl bg-zinc-950/90 backdrop-blur-md border border-zinc-800 overflow-hidden transition-transform duration-200">
-    <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-zinc-800">
-      <div class="flex items-center gap-2">
-        <i class="ph ph-diamond text-sky-400 text-sm"></i>
-        <span class="font-semibold text-xs tracking-wide text-zinc-100">エクスプローラー</span>
-      </div>
-      <div class="flex items-center gap-1">
-        <button id="btnExpandAllPlanets" type="button" title="全恒星・惑星カードを展開" class="rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-1.5 py-1 text-[10px] text-sky-300 transition">全展開</button>
-        <button id="btnCollapseAllPlanets" type="button" title="全恒星・惑星カードを縮小" class="rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-1.5 py-1 text-[10px] text-zinc-400 transition">全縮小</button>
-        <button id="btnCloseExplorer" type="button" class="rounded p-1 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900"><i class="ph ph-x text-xs"></i></button>
+  <aside id="explorerPanel" class="hud-element fixed top-20 bottom-4 left-3 z-20 w-72 max-w-[85vw] flex flex-col rounded-xl bg-zinc-950/90 backdrop-blur-md border border-zinc-800 overflow-hidden transition-transform duration-200">
       </div>
     </div>
 
@@ -272,7 +313,7 @@
   </aside>
 
   <!-- 右サイドバー：インスペクター -->
-  <aside id="inspectorPanel" class="hud-element fixed top-20 bottom-16 right-3 z-20 w-80 max-w-[88vw] flex flex-col rounded-xl bg-zinc-950/90 backdrop-blur-md border border-zinc-800 overflow-hidden transition-transform duration-200">
+  <aside id="inspectorPanel" class="hud-element fixed top-20 bottom-4 right-3 z-20 w-80 max-w-[88vw] flex flex-col rounded-xl bg-zinc-950/90 backdrop-blur-md border border-zinc-800 overflow-hidden transition-transform duration-200">
     <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-zinc-800">
       <div class="flex items-center gap-2">
         <i id="inspectorHeaderIcon" class="ph-fill ph-sun text-amber-400 text-base"></i>
@@ -283,22 +324,78 @@
     <div id="inspectorContent" class="flex-1 overflow-y-auto p-3.5 space-y-4 text-xs"></div>
   </aside>
 
-  <!-- 下部ズーム＆カメラロックバー -->
-  <footer class="hud-element fixed bottom-3 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center justify-center gap-2 sm:gap-3 rounded-xl bg-zinc-950/90 backdrop-blur-md border border-zinc-800 px-3.5 py-2 text-xs max-w-[95vw]">
-    <div id="lockStatusBadge" class="flex items-center gap-1.5 text-zinc-300">
-      <i class="ph ph-crosshair text-sky-400"></i>
-      <span id="lockStatusText" class="truncate max-w-[150px] sm:max-w-[220px]">自由視点</span>
-      <button id="btnUnlockCamera" type="button" class="hidden rounded bg-zinc-900 hover:bg-zinc-800 border border-sky-500/40 px-1.5 py-0.5 text-[10px] text-sky-300">解除</button>
+  <!-- 重ね表示されるカラータブ／ポップオーバー（右下部配置） -->
+  <div id="colorPickerPopover" class="hidden rounded-2xl bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 shadow-2xl p-4 space-y-3.5 text-xs select-none">
+    <div class="flex items-center justify-between">
+      <button id="btnColorEyedropper" type="button" title="画面上の色をスポイト取得" class="rounded-lg p-1.5 text-sky-400 hover:bg-zinc-800 transition">
+        <i class="ph-fill ph-eyedropper text-base"></i>
+      </button>
+      <span class="font-bold text-sm text-zinc-100">カラー</span>
+      <button id="btnCloseColorPopover" type="button" title="カラータブを閉じる" class="rounded-lg p-1.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition">
+        <i class="ph ph-x text-sm"></i>
+      </button>
     </div>
-    <div class="h-4 w-px bg-zinc-800 hidden sm:block"></div>
-    <div class="flex items-center gap-1.5">
-      <button id="btnZoomOut" type="button" title="ズームアウト (-)" class="rounded p-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 transition"><i class="ph ph-minus text-xs"></i></button>
-      <input id="cameraZoomRange" type="range" min="25" max="1800" step="1" value="420" class="w-24 sm:w-28 accent-sky-400">
-      <button id="btnZoomIn" type="button" title="ズームイン (+)" class="rounded p-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 transition"><i class="ph ph-plus text-xs"></i></button>
-      <span id="cameraZoomPercent" class="w-12 text-right font-mono text-[11px] text-sky-300">100%</span>
-      <button id="btnZoomReset" type="button" title="ズーム倍率リセット (100%)" class="rounded px-1.5 py-0.5 text-[10px] bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 transition">100%</button>
+
+    <div class="grid grid-cols-3 rounded-lg bg-black/80 p-0.5 border border-zinc-800 text-[11px] font-medium">
+      <button data-color-mode="grid" type="button" class="color-mode-btn rounded-md py-1 text-zinc-400 hover:text-zinc-200 transition">グリッド</button>
+      <button data-color-mode="spectrum" type="button" class="color-mode-btn rounded-md py-1 text-zinc-400 hover:text-zinc-200 transition">スペクトラム</button>
+      <button data-color-mode="sliders" type="button" class="color-mode-btn rounded-md py-1 bg-zinc-700/90 text-zinc-100 transition">スライダ</button>
     </div>
-  </footer>
+
+    <!-- スライダ表示 -->
+    <div id="colorViewSliders" class="space-y-2.5">
+      <div class="space-y-1">
+        <div class="flex items-center justify-between text-[11px] text-zinc-300">
+          <span>レッド</span>
+          <span id="colorValR" class="rounded bg-black/80 border border-zinc-800 px-2.5 py-0.5 font-mono text-zinc-100">245</span>
+        </div>
+        <input id="colorSliderR" type="range" min="0" max="255" step="1" value="245" class="color-slider-track w-full">
+      </div>
+
+      <div class="space-y-1">
+        <div class="flex items-center justify-between text-[11px] text-zinc-300">
+          <span>グリーン</span>
+          <span id="colorValG" class="rounded bg-black/80 border border-zinc-800 px-2.5 py-0.5 font-mono text-zinc-100">158</span>
+        </div>
+        <input id="colorSliderG" type="range" min="0" max="255" step="1" value="158" class="color-slider-track w-full">
+      </div>
+
+      <div class="space-y-1">
+        <div class="flex items-center justify-between text-[11px] text-zinc-300">
+          <span>ブルー</span>
+          <span id="colorValB" class="rounded bg-black/80 border border-zinc-800 px-2.5 py-0.5 font-mono text-zinc-100">11</span>
+        </div>
+        <input id="colorSliderB" type="range" min="0" max="255" step="1" value="11" class="color-slider-track w-full">
+      </div>
+    </div>
+
+    <!-- グリッド表示 -->
+    <div id="colorViewGrid" class="hidden grid grid-cols-6 gap-1.5 py-1"></div>
+
+    <!-- スペクトラム表示 -->
+    <div id="colorViewSpectrum" class="hidden space-y-2 py-1">
+      <input id="colorSpectrumHue" type="range" min="0" max="360" step="1" value="38" class="w-full accent-sky-400" style="background: linear-gradient(90deg, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%); height: 14px; border-radius: 9999px;">
+      <input id="colorSpectrumLight" type="range" min="15" max="85" step="1" value="52" class="w-full accent-sky-400">
+    </div>
+
+    <div class="flex items-center justify-between gap-2 pt-0.5">
+      <span class="text-[11px] text-sky-400 font-medium">sRGB 16進数カラー値</span>
+      <input id="colorHexInput" type="text" maxlength="7" class="w-24 rounded-lg bg-black/80 border border-zinc-800 px-2.5 py-1 text-center font-mono text-xs text-zinc-100 uppercase focus:outline-none focus:border-sky-400">
+    </div>
+
+    <div class="flex items-center gap-2.5 pt-0.5">
+      <div id="colorActiveSwatch" class="h-11 w-11 rounded-xl border border-zinc-700 shrink-0" style="background-color: #f59e0b;"></div>
+      <div class="flex flex-wrap items-center gap-2 flex-1">
+        <button data-swatch-hex="#09090b" type="button" class="color-preset-swatch h-6 w-6 rounded-full bg-zinc-950 border border-zinc-700 transition hover:scale-110"></button>
+        <button data-swatch-hex="#2563eb" type="button" class="color-preset-swatch h-6 w-6 rounded-full bg-blue-600 transition hover:scale-110"></button>
+        <button data-swatch-hex="#22c55e" type="button" class="color-preset-swatch h-6 w-6 rounded-full bg-green-500 transition hover:scale-110"></button>
+        <button data-swatch-hex="#facc15" type="button" class="color-preset-swatch h-6 w-6 rounded-full bg-yellow-400 transition hover:scale-110"></button>
+        <button data-swatch-hex="#ef4444" type="button" class="color-preset-swatch h-6 w-6 rounded-full bg-red-500 transition hover:scale-110"></button>
+        <button data-swatch-hex="#38bdf8" type="button" class="color-preset-swatch h-6 w-6 rounded-full bg-sky-400 transition hover:scale-110"></button>
+        <button id="btnAddCustomSwatch" type="button" title="現在の色をスウォッチへ追加" class="h-6 w-6 rounded-full bg-zinc-700 hover:bg-zinc-600 text-zinc-100 flex items-center justify-center text-xs font-bold transition">+</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 新規惑星モーダル -->
   <div id="newPlanetModal" class="hidden pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -814,6 +911,8 @@
         searchDropdown: $('searchDropdown'),
         btnAddStar: $('btnAddStar'),
         btnOpenNewPlanetModal: $('btnOpenNewPlanetModal'),
+        btnUndoAction: $('btnUndoAction'),
+        btnRedoAction: $('btnRedoAction'),
         localFileInput: $('localFileInput'),
         btnPauseOrbit: $('btnPauseOrbit'),
         pauseOrbitIcon: $('pauseOrbitIcon'),
@@ -821,10 +920,8 @@
         btnOpenSyncModal: $('btnOpenSyncModal'),
         syncStatusDot: $('syncStatusDot'),
         syncStatusLabel: $('syncStatusLabel'),
-        btnLockInvite: $('btnLockInvite'),
         btnToggleInviteVisibility: $('btnToggleInviteVisibility'),
         inviteVisibilityIcon: $('inviteVisibilityIcon'),
-        inviteLockIcon: $('inviteLockIcon'),
         inviteCodeInput: $('inviteCodeInput'),
         btnResetView: $('btnResetView'),
         btnToggleInspector: $('btnToggleInspector'),
@@ -843,6 +940,24 @@
         inspectorHeaderTitle: $('inspectorHeaderTitle'),
         btnCloseInspector: $('btnCloseInspector'),
         inspectorContent: $('inspectorContent'),
+        colorPickerPopover: $('colorPickerPopover'),
+        btnCloseColorPopover: $('btnCloseColorPopover'),
+        btnColorEyedropper: $('btnColorEyedropper'),
+        colorModeBtns: Array.from(document.querySelectorAll('.color-mode-btn')),
+        colorViewSliders: $('colorViewSliders'),
+        colorViewGrid: $('colorViewGrid'),
+        colorViewSpectrum: $('colorViewSpectrum'),
+        colorSliderR: $('colorSliderR'),
+        colorSliderG: $('colorSliderG'),
+        colorSliderB: $('colorSliderB'),
+        colorValR: $('colorValR'),
+        colorValG: $('colorValG'),
+        colorValB: $('colorValB'),
+        colorSpectrumHue: $('colorSpectrumHue'),
+        colorSpectrumLight: $('colorSpectrumLight'),
+        colorHexInput: $('colorHexInput'),
+        colorActiveSwatch: $('colorActiveSwatch'),
+        btnAddCustomSwatch: $('btnAddCustomSwatch'),
         lockStatusText: $('lockStatusText'),
         btnUnlockCamera: $('btnUnlockCamera'),
         btnZoomOut: $('btnZoomOut'),
@@ -997,6 +1112,9 @@
         data: loadStateFromLocalStorage(),
         syncConfig: loadSyncConfigFromLocalStorage(),
         inviteAuth: loadInviteAuthFromLocalStorage(),
+        undoStack: [],
+        redoStack: [],
+        isRestoringHistory: false,
         hudHidden: false,
         searchQuery: '',
         draggedPlanetId: null,
@@ -1045,10 +1163,6 @@
 
       function updateInviteAuthUI() {
         const authed = isInviteAuthenticated();
-
-        if (els.inviteLockIcon) {
-          els.inviteLockIcon.className = authed ? 'ph ph-lock-open text-sm text-emerald-300' : 'ph ph-lock text-sm text-amber-300';
-        }
 
         if (!authed) {
           updateSyncStatusUI('同期オフ', 'bg-zinc-600');
@@ -1107,6 +1221,98 @@
         if (showFeedback) {
           showToast('切断してロックしました', 'ph-lock');
         }
+      }
+
+      const MAX_HISTORY_STEPS = 40;
+
+      function cloneWorkspaceSnapshot(dataObj) {
+        const src = dataObj || appState.data;
+        return JSON.stringify({
+          stars: Array.isArray(src.stars) ? src.stars : [],
+          planets: Array.isArray(src.planets) ? src.planets : [],
+          selectedKind: src.selectedKind || 'star',
+          selectedId: src.selectedId || null,
+          lockedTarget: src.lockedTarget || null,
+          collapsedStarIds: Array.isArray(src.collapsedStarIds) ? src.collapsedStarIds : [],
+          expandedPlanetIds: Array.isArray(src.expandedPlanetIds) ? src.expandedPlanetIds : []
+        });
+      }
+
+      function updateUndoRedoUI() {
+        const canUndo = appState.undoStack.length > 0;
+        const canRedo = appState.redoStack.length > 0;
+        if (els.btnUndoAction) {
+          els.btnUndoAction.disabled = !canUndo;
+          els.btnUndoAction.title = canUndo
+            ? `操作を巻き戻す (${appState.undoStack.length}件の履歴 / Ctrl+Z)`
+            : '巻き戻せる操作はありません';
+        }
+        if (els.btnRedoAction) {
+          els.btnRedoAction.disabled = !canRedo;
+          els.btnRedoAction.title = canRedo
+            ? `操作をやり直す (${appState.redoStack.length}件 / Ctrl+Y)`
+            : 'やり直せる操作はありません';
+        }
+      }
+
+      function pushUndoCheckpoint() {
+        if (appState.isRestoringHistory) return;
+        const snap = cloneWorkspaceSnapshot(appState.data);
+        if (appState.undoStack.length > 0 && appState.undoStack[appState.undoStack.length - 1] === snap) {
+          return;
+        }
+        appState.undoStack.push(snap);
+        if (appState.undoStack.length > MAX_HISTORY_STEPS) {
+          appState.undoStack.shift();
+        }
+        appState.redoStack = [];
+        updateUndoRedoUI();
+      }
+
+      function applyWorkspaceSnapshot(snapshotJson) {
+        const parsed = JSON.parse(snapshotJson);
+        appState.isRestoringHistory = true;
+        try {
+          appState.data.stars = Array.isArray(parsed.stars) ? parsed.stars : appState.data.stars;
+          appState.data.planets = normalizePlanetsList(parsed.planets);
+          appState.data.selectedKind = parsed.selectedKind || 'star';
+          appState.data.selectedId = parsed.selectedId || (appState.data.stars[0] ? appState.data.stars[0].id : null);
+          appState.data.lockedTarget = parsed.lockedTarget || null;
+          appState.data.collapsedStarIds = Array.isArray(parsed.collapsedStarIds) ? parsed.collapsedStarIds : [];
+          appState.data.expandedPlanetIds = Array.isArray(parsed.expandedPlanetIds) ? parsed.expandedPlanetIds : [];
+          reconcileSelection();
+          rebuild3DScene();
+          renderAllUI();
+          saveStateToLocalStorage(true);
+        } finally {
+          appState.isRestoringHistory = false;
+        }
+      }
+
+      function undoLastAction() {
+        if (appState.undoStack.length === 0) {
+          showToast('巻き戻せる操作はありません', 'ph-info');
+          return;
+        }
+        const currentSnap = cloneWorkspaceSnapshot(appState.data);
+        const prevSnap = appState.undoStack.pop();
+        appState.redoStack.push(currentSnap);
+        applyWorkspaceSnapshot(prevSnap);
+        updateUndoRedoUI();
+        showToast('直前の操作を巻き戻しました', 'ph-arrow-u-up-left');
+      }
+
+      function redoLastAction() {
+        if (appState.redoStack.length === 0) {
+          showToast('やり直せる操作はありません', 'ph-info');
+          return;
+        }
+        const currentSnap = cloneWorkspaceSnapshot(appState.data);
+        const nextSnap = appState.redoStack.pop();
+        appState.undoStack.push(currentSnap);
+        applyWorkspaceSnapshot(nextSnap);
+        updateUndoRedoUI();
+        showToast('操作をやり直しました', 'ph-arrow-u-up-right');
       }
 
       function saveStateToLocalStorage(triggerCloudSync = true) {
@@ -1561,11 +1767,11 @@
         }
         if (els.btnMode3D && els.btnMode2D) {
           if (is3D) {
-            els.btnMode3D.className = 'rounded-md px-2.5 py-1 bg-zinc-900 text-sky-300 border border-sky-500/40 transition flex items-center gap-1';
-            els.btnMode2D.className = 'rounded-md px-2.5 py-1 text-zinc-500 hover:text-zinc-200 transition flex items-center gap-1';
+            els.btnMode3D.className = 'rounded-md px-2 py-1 bg-zinc-900 text-sky-300 border border-sky-500/40 transition flex items-center justify-center';
+            els.btnMode2D.className = 'rounded-md px-2 py-1 text-zinc-500 hover:text-zinc-200 transition flex items-center justify-center';
           } else {
-            els.btnMode2D.className = 'rounded-md px-2.5 py-1 bg-zinc-900 text-sky-300 border border-sky-500/40 transition flex items-center gap-1';
-            els.btnMode3D.className = 'rounded-md px-2.5 py-1 text-zinc-500 hover:text-zinc-200 transition flex items-center gap-1';
+            els.btnMode2D.className = 'rounded-md px-2 py-1 bg-zinc-900 text-sky-300 border border-sky-500/40 transition flex items-center justify-center';
+            els.btnMode3D.className = 'rounded-md px-2 py-1 text-zinc-500 hover:text-zinc-200 transition flex items-center justify-center';
           }
         }
       }
@@ -2244,7 +2450,6 @@
         const lock = appState.data.lockedTarget;
         if (!lock) {
           if (els.lockStatusText) els.lockStatusText.textContent = '自由視点';
-          if (els.btnUnlockCamera) els.btnUnlockCamera.classList.add('hidden');
           return;
         }
         if (lock.kind === 'star') {
@@ -2254,7 +2459,6 @@
           const p = getPlanetById(lock.id);
           if (els.lockStatusText) els.lockStatusText.textContent = p ? `惑星ロック: ${p.name}` : '自由視点';
         }
-        if (els.btnUnlockCamera) els.btnUnlockCamera.classList.remove('hidden');
       }
 
       function selectEntity(kind, id, lockCamera = false, openInspector = false) {
@@ -2485,6 +2689,7 @@
               const pid = (e.dataTransfer && e.dataTransfer.getData('text/plain')) || appState.draggedPlanetId;
               const planet = getPlanetById(pid);
               if (planet && planet.starId !== star.id) {
+                pushUndoCheckpoint();
                 planet.starId = star.id;
                 if (collapsedSet.has(star.id)) {
                   toggleStarCollapsed(star.id);
@@ -2790,7 +2995,10 @@
                 </div>
                 <div>
                   <label class="block text-[11px] text-zinc-400 mb-1">惑星カラー</label>
-                  <input id="inspPlanetColor" type="color" value="${escapeHtml(planet.color || '#38bdf8')}" class="h-8 w-full rounded bg-black border border-zinc-800 cursor-pointer">
+                  <button id="inspPlanetColorTrigger" type="button" title="カラータブを開く" class="h-8 w-full rounded-lg border border-zinc-700 flex items-center justify-between px-2.5 transition hover:border-sky-400" style="background-color:${escapeHtml(planet.color || '#38bdf8')}">
+                    <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/65 text-white">${escapeHtml((planet.color || '#38bdf8').toUpperCase())}</span>
+                    <i class="ph ph-sliders-horizontal text-xs text-white drop-shadow"></i>
+                  </button>
                 </div>
               </div>
 
@@ -2829,22 +3037,23 @@
               </div>
             `;
 
+            onEl(container.querySelector('#inspPlanetName'), 'focus', () => pushUndoCheckpoint());
             onEl(container.querySelector('#inspPlanetName'), 'input', (e) => {
               planet.name = e.target.value;
               renderExplorer();
               saveStateToLocalStorage(false);
             });
             onEl(container.querySelector('#inspPlanetStar'), 'change', (e) => {
+              pushUndoCheckpoint();
               planet.starId = e.target.value;
               rebuild3DScene();
               renderExplorer();
               saveStateToLocalStorage(true);
             });
-            onEl(container.querySelector('#inspPlanetColor'), 'input', (e) => {
-              planet.color = e.target.value;
-              rebuild3DScene();
-              saveStateToLocalStorage(false);
+            onEl(container.querySelector('#inspPlanetColorTrigger'), 'click', () => {
+              toggleColorPopoverForTarget('planet', planet.id);
             });
+            onEl(container.querySelector('#inspPlanetRadius'), 'pointerdown', () => pushUndoCheckpoint());
             onEl(container.querySelector('#inspPlanetRadius'), 'input', (e) => {
               planet.radius = Number(e.target.value);
               const valEl = container.querySelector('#inspPlanetRadiusVal');
@@ -2852,6 +3061,7 @@
               rebuild3DScene();
               saveStateToLocalStorage(false);
             });
+            onEl(container.querySelector('#inspPlanetOrbit'), 'pointerdown', () => pushUndoCheckpoint());
             onEl(container.querySelector('#inspPlanetOrbit'), 'input', (e) => {
               planet.orbitRadius = Number(e.target.value);
               const valEl = container.querySelector('#inspPlanetOrbitVal');
@@ -2859,6 +3069,7 @@
               rebuild3DScene();
               saveStateToLocalStorage(false);
             });
+            onEl(container.querySelector('#inspPlanetSpeed'), 'pointerdown', () => pushUndoCheckpoint());
             onEl(container.querySelector('#inspPlanetSpeed'), 'input', (e) => {
               planet.orbitSpeed = Number(e.target.value);
               const valEl = container.querySelector('#inspPlanetSpeedVal');
@@ -2891,7 +3102,10 @@
           <div class="grid grid-cols-2 gap-2.5">
             <div>
               <label class="block text-[11px] text-zinc-400 mb-1">恒星カラー</label>
-              <input id="inspStarColor" type="color" value="${escapeHtml(star.color || '#f59e0b')}" class="h-8 w-full rounded bg-black border border-zinc-800 cursor-pointer">
+              <button id="inspStarColorTrigger" type="button" title="カラータブを開く" class="h-8 w-full rounded-lg border border-zinc-700 flex items-center justify-between px-2.5 transition hover:border-amber-400" style="background-color:${escapeHtml(star.color || '#f59e0b')}">
+                <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-black/65 text-white">${escapeHtml((star.color || '#f59e0b').toUpperCase())}</span>
+                <i class="ph ph-sliders-horizontal text-xs text-white drop-shadow"></i>
+              </button>
             </div>
             <div>
               <label class="block text-[11px] text-zinc-400 mb-1">所属惑星数</label>
@@ -2937,18 +3151,17 @@
           </div>
         `;
 
+        onEl(container.querySelector('#inspStarName'), 'focus', () => pushUndoCheckpoint());
         onEl(container.querySelector('#inspStarName'), 'input', (e) => {
           star.name = e.target.value;
           renderExplorer();
           updateLockStatusUI();
           saveStateToLocalStorage(false);
         });
-        onEl(container.querySelector('#inspStarColor'), 'input', (e) => {
-          star.color = e.target.value;
-          rebuild3DScene();
-          renderExplorer();
-          saveStateToLocalStorage(false);
+        onEl(container.querySelector('#inspStarColorTrigger'), 'click', () => {
+          toggleColorPopoverForTarget('star', star.id);
         });
+        onEl(container.querySelector('#inspStarRadius'), 'pointerdown', () => pushUndoCheckpoint());
         onEl(container.querySelector('#inspStarRadius'), 'input', (e) => {
           star.radius = Number(e.target.value);
           const valEl = container.querySelector('#inspStarRadiusVal');
@@ -2958,6 +3171,7 @@
         });
         const applyStarCoords = () => {
           if (star.id === 'star-sun') return;
+          pushUndoCheckpoint();
           const xInput = container.querySelector('#inspStarPosX');
           const zInput = container.querySelector('#inspStarPosZ');
           const nextPos = enforceStarExclusionRule(
@@ -2977,6 +3191,7 @@
         };
         onEl(container.querySelector('#inspStarPosX'), 'change', applyStarCoords);
         onEl(container.querySelector('#inspStarPosZ'), 'change', applyStarCoords);
+        onEl(container.querySelector('#inspStarNote'), 'focus', () => pushUndoCheckpoint());
         onEl(container.querySelector('#inspStarNote'), 'input', (e) => {
           star.note = e.target.value;
           saveStateToLocalStorage(false);
@@ -2989,6 +3204,178 @@
           onEl(delStarBtn, 'click', () => {
             openBlackHoleModal('star', star.id);
           });
+        }
+      }
+
+      // =========================================================================
+      // 8.5 右下部重ね表示カラータブ（RGBスライダ・グリッド・スペクトラム・HEX）
+      // =========================================================================
+      const colorPopoverState = {
+        open: false,
+        mode: 'sliders',
+        targetKind: null,
+        targetId: null,
+        rgb: { r: 245, g: 158, b: 11 }
+      };
+
+      function normalizeHex6(hexStr, fallback = '#f59e0b') {
+        const cleaned = String(hexStr || '').trim().replace(/^#/, '');
+        if (/^[0-9a-fA-F]{3}$/.test(cleaned)) {
+          return '#' + cleaned.split('').map((ch) => ch + ch).join('').toLowerCase();
+        }
+        if (/^[0-9a-fA-F]{6}$/.test(cleaned)) {
+          return '#' + cleaned.toLowerCase();
+        }
+        return fallback.toLowerCase();
+      }
+
+      function hexToRgb(hexStr) {
+        const norm = normalizeHex6(hexStr, '#f59e0b').slice(1);
+        return {
+          r: parseInt(norm.slice(0, 2), 16),
+          g: parseInt(norm.slice(2, 4), 16),
+          b: parseInt(norm.slice(4, 6), 16)
+        };
+      }
+
+      function rgbToHex(r, g, b) {
+        const toHex = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0))).toString(16).padStart(2, '0');
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toLowerCase();
+      }
+
+      function getActiveColorTargetEntity() {
+        if (colorPopoverState.targetKind === 'planet') {
+          return getPlanetById(colorPopoverState.targetId);
+        }
+        if (colorPopoverState.targetKind === 'star') {
+          return getStarById(colorPopoverState.targetId);
+        }
+        if (appState.data.selectedKind === 'planet') {
+          return getPlanetById(appState.data.selectedId);
+        }
+        return getStarById(appState.data.selectedId) || appState.data.stars[0] || null;
+      }
+
+      function applyColorToTarget(nextHex, recordHistory = false) {
+        const hex = normalizeHex6(nextHex, '#f59e0b');
+        const rgb = hexToRgb(hex);
+        colorPopoverState.rgb = rgb;
+
+        const target = getActiveColorTargetEntity();
+        if (target) {
+          if (recordHistory) pushUndoCheckpoint();
+          target.color = hex;
+          if (colorPopoverState.targetKind === 'planet' || (!colorPopoverState.targetKind && appState.data.selectedKind === 'planet')) {
+            colorPopoverState.targetKind = 'planet';
+            colorPopoverState.targetId = target.id;
+          } else {
+            colorPopoverState.targetKind = 'star';
+            colorPopoverState.targetId = target.id;
+          }
+          rebuild3DScene();
+          renderExplorer();
+          saveStateToLocalStorage(recordHistory);
+        }
+
+        syncColorPopoverUI(hex, rgb);
+      }
+
+      function syncColorPopoverUI(hex = null, rgb = null) {
+        const resolvedRgb = rgb || colorPopoverState.rgb;
+        const resolvedHex = normalizeHex6(hex || rgbToHex(resolvedRgb.r, resolvedRgb.g, resolvedRgb.b));
+
+        if (els.colorValR) els.colorValR.textContent = String(resolvedRgb.r);
+        if (els.colorValG) els.colorValG.textContent = String(resolvedRgb.g);
+        if (els.colorValB) els.colorValB.textContent = String(resolvedRgb.b);
+
+        if (els.colorSliderR) {
+          els.colorSliderR.value = String(resolvedRgb.r);
+          els.colorSliderR.style.background = `linear-gradient(90deg, rgb(0, ${resolvedRgb.g}, ${resolvedRgb.b}) 0%, rgb(255, ${resolvedRgb.g}, ${resolvedRgb.b}) 100%)`;
+        }
+        if (els.colorSliderG) {
+          els.colorSliderG.value = String(resolvedRgb.g);
+          els.colorSliderG.style.background = `linear-gradient(90deg, rgb(${resolvedRgb.r}, 0, ${resolvedRgb.b}) 0%, rgb(${resolvedRgb.r}, 255, ${resolvedRgb.b}) 100%)`;
+        }
+        if (els.colorSliderB) {
+          els.colorSliderB.value = String(resolvedRgb.b);
+          els.colorSliderB.style.background = `linear-gradient(90deg, rgb(${resolvedRgb.r}, ${resolvedRgb.g}, 0) 0%, rgb(${resolvedRgb.r}, ${resolvedRgb.g}, 255) 100%)`;
+        }
+
+        if (els.colorHexInput && document.activeElement !== els.colorHexInput) {
+          els.colorHexInput.value = resolvedHex.slice(1).toUpperCase();
+        }
+        if (els.colorActiveSwatch) {
+          els.colorActiveSwatch.style.backgroundColor = resolvedHex;
+        }
+
+        const triggerBtn = els.inspectorContent
+          ? els.inspectorContent.querySelector('#inspPlanetColorTrigger, #inspStarColorTrigger')
+          : null;
+        if (triggerBtn) {
+          triggerBtn.style.backgroundColor = resolvedHex;
+          const labelSpan = triggerBtn.querySelector('span');
+          if (labelSpan) labelSpan.textContent = resolvedHex.toUpperCase();
+        }
+      }
+
+      function populateColorGridIfNeeded() {
+        if (!els.colorViewGrid || els.colorViewGrid.dataset.populated === '1') return;
+        const gridPalette = [
+          '#f8fafc', '#e2e8f0', '#94a3b8', '#475569', '#1e293b', '#09090b',
+          '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
+          '#10b981', '#14b8a6', '#06b6d4', '#38bdf8', '#3b82f6', '#6366f1',
+          '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#fb7185'
+        ];
+        els.colorViewGrid.innerHTML = gridPalette
+          .map((hex) => `<button type="button" data-grid-hex="${hex}" class="h-6 w-full rounded-md border border-white/15 transition hover:scale-105" style="background-color:${hex}"></button>`)
+          .join('');
+        els.colorViewGrid.dataset.populated = '1';
+      }
+
+      function setColorPopoverMode(mode) {
+        colorPopoverState.mode = mode;
+        els.colorModeBtns.forEach((btn) => {
+          const active = btn.dataset.colorMode === mode;
+          btn.className = active
+            ? 'color-mode-btn rounded-md py-1 bg-zinc-700/90 text-zinc-100 transition'
+            : 'color-mode-btn rounded-md py-1 text-zinc-400 hover:text-zinc-200 transition';
+        });
+        if (els.colorViewSliders) els.colorViewSliders.classList.toggle('hidden', mode !== 'sliders');
+        if (els.colorViewGrid) els.colorViewGrid.classList.toggle('hidden', mode !== 'grid');
+        if (els.colorViewSpectrum) els.colorViewSpectrum.classList.toggle('hidden', mode !== 'spectrum');
+        if (mode === 'grid') populateColorGridIfNeeded();
+      }
+
+      function openColorPopoverForTarget(kind, id) {
+        const entity = kind === 'planet' ? getPlanetById(id) : getStarById(id);
+        colorPopoverState.targetKind = kind;
+        colorPopoverState.targetId = entity ? entity.id : null;
+        const currentHex = normalizeHex6((entity && entity.color) || '#f59e0b');
+        colorPopoverState.rgb = hexToRgb(currentHex);
+        colorPopoverState.open = true;
+        if (els.colorPickerPopover) {
+          els.colorPickerPopover.classList.remove('hidden');
+        }
+        setColorPopoverMode(colorPopoverState.mode);
+        syncColorPopoverUI(currentHex, colorPopoverState.rgb);
+      }
+
+      function closeColorPopover() {
+        colorPopoverState.open = false;
+        if (els.colorPickerPopover) {
+          els.colorPickerPopover.classList.add('hidden');
+        }
+      }
+
+      function toggleColorPopoverForTarget(kind, id) {
+        if (
+          colorPopoverState.open &&
+          colorPopoverState.targetKind === kind &&
+          colorPopoverState.targetId === id
+        ) {
+          closeColorPopover();
+        } else {
+          openColorPopoverForTarget(kind, id);
         }
       }
 
@@ -3032,6 +3419,7 @@
         if (!target) return;
 
         if (target.kind === 'planet') {
+          pushUndoCheckpoint();
           appState.data.planets = appState.data.planets.filter((p) => p.id !== target.id);
           appState.data.expandedPlanetIds = appState.data.expandedPlanetIds.filter((pid) => pid !== target.id);
           if (appState.data.selectedKind === 'planet' && appState.data.selectedId === target.id) {
@@ -3047,6 +3435,7 @@
             closeBlackHoleModal();
             return;
           }
+          pushUndoCheckpoint();
           const removedPlanetIds = new Set(
             appState.data.planets.filter((p) => p.starId === target.id).map((p) => p.id)
           );
@@ -3080,6 +3469,7 @@
 
       function addNewStarSystem() {
         try {
+          pushUndoCheckpoint();
           const idx = appState.data.stars.length + 1;
           const palette = ['#f59e0b', '#38bdf8', '#a855f7', '#34d399', '#fb7185', '#eab308'];
           const color = palette[(idx - 1) % palette.length];
@@ -3132,6 +3522,7 @@
       }
 
       function createPlanetRecord({ name, starId, type, radius, orbitRadius, imageUrl, contentHtml }) {
+        pushUndoCheckpoint();
         const star = getStarById(starId) || appState.data.stars[0];
         const normalizedType = type === 'image' ? 'image' : 'document';
         const defaultColor = normalizedType === 'image' ? '#f472b6' : '#38bdf8';
@@ -3261,6 +3652,7 @@
       function openDocEditor(planetId) {
         const planet = getPlanetById(planetId);
         if (!planet) return;
+        pushUndoCheckpoint();
         appState.activeDocPlanetId = planet.id;
         const star = getStarById(planet.starId);
         if (els.docModalTitle) els.docModalTitle.textContent = planet.name;
@@ -3347,6 +3739,7 @@
         syncZoomUI();
         syncOrbitControlsUI();
         updateInviteAuthUI();
+        updateUndoRedoUI();
       }
 
       function setHudHidden(hidden) {
@@ -3382,7 +3775,108 @@
           if (els.inspectorPanel) els.inspectorPanel.classList.toggle('hidden');
         });
         onEl(els.btnCloseInspector, 'click', () => {
+          closeColorPopover();
           if (els.inspectorPanel) els.inspectorPanel.classList.add('hidden');
+        });
+
+        onEl(els.btnCloseColorPopover, 'click', closeColorPopover);
+        els.colorModeBtns.forEach((btn) => {
+          onEl(btn, 'click', () => setColorPopoverMode(btn.dataset.colorMode || 'sliders'));
+        });
+
+        const handleRgbSliderChange = () => {
+          const r = Number(els.colorSliderR ? els.colorSliderR.value : colorPopoverState.rgb.r);
+          const g = Number(els.colorSliderG ? els.colorSliderG.value : colorPopoverState.rgb.g);
+          const b = Number(els.colorSliderB ? els.colorSliderB.value : colorPopoverState.rgb.b);
+          applyColorToTarget(rgbToHex(r, g, b), false);
+        };
+        [els.colorSliderR, els.colorSliderG, els.colorSliderB].forEach((slider) => {
+          onEl(slider, 'pointerdown', () => pushUndoCheckpoint());
+          onEl(slider, 'input', handleRgbSliderChange);
+        });
+
+        onEl(els.colorViewGrid, 'click', (e) => {
+          const swatch = e.target.closest('[data-grid-hex]');
+          if (!swatch) return;
+          applyColorToTarget(swatch.dataset.gridHex, true);
+        });
+
+        const handleSpectrumChange = () => {
+          const h = Number(els.colorSpectrumHue ? els.colorSpectrumHue.value : 38);
+          const l = Number(els.colorSpectrumLight ? els.colorSpectrumLight.value : 52) / 100;
+          const s = 0.88;
+          const c = (1 - Math.abs(2 * l - 1)) * s;
+          const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+          const m = l - c / 2;
+          let r1 = 0, g1 = 0, b1 = 0;
+          if (h < 60) { r1 = c; g1 = x; }
+          else if (h < 120) { r1 = x; g1 = c; }
+          else if (h < 180) { g1 = c; b1 = x; }
+          else if (h < 240) { g1 = x; b1 = c; }
+          else if (h < 300) { r1 = x; b1 = c; }
+          else { r1 = c; b1 = x; }
+          applyColorToTarget(
+            rgbToHex((r1 + m) * 255, (g1 + m) * 255, (b1 + m) * 255),
+            false
+          );
+        };
+        onEl(els.colorSpectrumHue, 'pointerdown', () => pushUndoCheckpoint());
+        onEl(els.colorSpectrumLight, 'pointerdown', () => pushUndoCheckpoint());
+        onEl(els.colorSpectrumHue, 'input', handleSpectrumChange);
+        onEl(els.colorSpectrumLight, 'input', handleSpectrumChange);
+
+        onEl(els.colorHexInput, 'change', (e) => {
+          const raw = String(e.target.value || '').trim().replace(/^#/, '');
+          if (/^[0-9a-fA-F]{3}$/.test(raw) || /^[0-9a-fA-F]{6}$/.test(raw)) {
+            applyColorToTarget('#' + raw, true);
+          } else {
+            syncColorPopoverUI();
+          }
+        });
+
+        if (els.colorPickerPopover) {
+          onEl(els.colorPickerPopover, 'click', (e) => {
+            const presetBtn = e.target.closest('.color-preset-swatch');
+            if (!presetBtn) return;
+            applyColorToTarget(presetBtn.dataset.swatchHex, true);
+          });
+        }
+
+        onEl(els.btnAddCustomSwatch, 'click', () => {
+          const currentHex = rgbToHex(colorPopoverState.rgb.r, colorPopoverState.rgb.g, colorPopoverState.rgb.b);
+          const container = els.btnAddCustomSwatch && els.btnAddCustomSwatch.parentElement;
+          if (!container) return;
+          const existing = Array.from(container.querySelectorAll('.color-preset-swatch')).find(
+            (btn) => normalizeHex6(btn.dataset.swatchHex) === currentHex
+          );
+          if (existing) {
+            showToast(`スウォッチ ${currentHex.toUpperCase()} は既に登録されています`, 'ph-palette');
+            return;
+          }
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.swatchHex = currentHex;
+          btn.title = currentHex.toUpperCase();
+          btn.className = 'color-preset-swatch h-6 w-6 rounded-full border border-white/25 transition hover:scale-110';
+          btn.style.backgroundColor = currentHex;
+          container.insertBefore(btn, els.btnAddCustomSwatch);
+          showToast(`カラー ${currentHex.toUpperCase()} を追加しました`, 'ph-palette');
+        });
+
+        onEl(els.btnColorEyedropper, 'click', async () => {
+          if (typeof window.EyeDropper === 'function') {
+            try {
+              const eyeDropper = new window.EyeDropper();
+              const result = await eyeDropper.open();
+              if (result && result.sRGBHex) {
+                applyColorToTarget(result.sRGBHex, true);
+              }
+            } catch (err) {
+              // User cancelled EyeDropper
+            }
+          } else {
+            showToast('このブラウザではスポイト機能に非対応です。スライダまたはHEXをご利用ください', 'ph-info');
+          }
         });
 
         onEl(els.btnToggleHud, 'click', () => setHudHidden(!appState.hudHidden));
@@ -3428,6 +3922,8 @@
 
         onEl(els.btnAddStar, 'click', addNewStarSystem);
         onEl(els.btnOpenNewPlanetModal, 'click', () => openNewPlanetModal(null));
+        onEl(els.btnUndoAction, 'click', undoLastAction);
+        onEl(els.btnRedoAction, 'click', redoLastAction);
         onEl(els.localFileInput, 'change', (e) => {
           handleLocalFilesSelected(e.target.files);
           e.target.value = '';
@@ -3451,13 +3947,6 @@
 
         onEl(els.btnOpenSyncModal, 'click', openSyncModal);
         onEl(els.btnCloseSyncModal, 'click', closeSyncModal);
-        onEl(els.btnLockInvite, 'click', () => {
-          if (!isInviteAuthenticated()) {
-            openSyncModal();
-            return;
-          }
-          lockInviteAuthentication(true);
-        });
         onEl(els.btnToggleInviteVisibility, 'click', () => {
           if (!els.inviteCodeInput) return;
           const isPwd = els.inviteCodeInput.type === 'password';
@@ -3621,6 +4110,7 @@
           const planet = getPlanetById(appState.activeImagePlanetId);
           const url = els.imageViewerUrlInput.value.trim();
           if (planet && url) {
+            pushUndoCheckpoint();
             planet.imageUrl = url;
             planet.updatedAt = Date.now();
             if (els.imageViewerError) els.imageViewerError.classList.add('hidden');
@@ -3643,6 +4133,7 @@
           reader.onload = () => {
             const dataUrl = String(reader.result || '');
             if (planet && dataUrl) {
+              pushUndoCheckpoint();
               planet.imageUrl = dataUrl;
               planet.name = file.name;
               planet.updatedAt = Date.now();
@@ -3667,12 +4158,33 @@
         });
 
         window.addEventListener('keydown', (e) => {
+          const isEditingField =
+            e.target &&
+            (e.target.tagName === 'INPUT' ||
+              e.target.tagName === 'TEXTAREA' ||
+              e.target.isContentEditable);
+
+          if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 'z' || e.key === 'Z') && !isEditingField) {
+            e.preventDefault();
+            if (e.shiftKey) {
+              redoLastAction();
+            } else {
+              undoLastAction();
+            }
+            return;
+          }
+          if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === 'y' || e.key === 'Y') && !isEditingField) {
+            e.preventDefault();
+            redoLastAction();
+            return;
+          }
+
           if (e.shiftKey && (e.key === 'H' || e.key === 'h')) {
             e.preventDefault();
             setHudHidden(!appState.hudHidden);
           } else if (e.key === 'Escape') {
-            if (els.blackHoleModal && !els.blackHoleModal.classList.contains('hidden')) closeBlackHoleModal();
-            else if (els.newPlanetModal && !els.newPlanetModal.classList.contains('hidden')) closeNewPlanetModal();
+            if (colorPopoverState.open) closeColorPopover();
+            else if (els.blackHoleModal && !els.blackHoleModal.classList.contains('hidden')) closeBlackHoleModal();
             else if (els.supabaseSyncModal && !els.supabaseSyncModal.classList.contains('hidden')) closeSyncModal();
             else if (els.astralImageViewerModal && !els.astralImageViewerModal.classList.contains('hidden')) closeImageViewer();
             else if (els.astralDocModal && !els.astralDocModal.classList.contains('hidden')) saveActiveDoc(true);
