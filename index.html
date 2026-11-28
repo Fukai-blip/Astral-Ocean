@@ -133,7 +133,6 @@
       cursor: pointer;
     }
 
-    /* カラーピッカーポップオーバー（右下部へ重ね表示） */
     #colorPickerPopover {
       position: fixed;
       right: 1.25rem;
@@ -198,7 +197,7 @@
         <i class="ph ph-sidebar-simple text-base"></i>
       </button>
 
-      <!-- 戻す・進むタブ（左から2番目・3番目） -->
+      <!-- 戻す・進むタブ -->
       <button id="btnUndoAction" type="button" disabled title="操作を巻き戻す (Ctrl+Z / ⌘Z)" class="rounded-lg bg-black hover:bg-zinc-900 border border-zinc-800 p-2 text-zinc-200 disabled:opacity-35 disabled:pointer-events-none transition flex items-center justify-center">
         <i class="ph ph-arrow-u-up-left text-base text-sky-400"></i>
       </button>
@@ -210,7 +209,7 @@
       <div class="relative">
         <div class="flex items-center rounded-lg bg-black border border-zinc-800 px-2.5 py-1.5 w-36 sm:w-48 focus-within:border-sky-400 transition">
           <i class="ph ph-magnifying-glass text-zinc-500 text-xs mr-1.5"></i>
-          <input id="searchInput" type="text" class="w-full bg-transparent text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none">
+          <input id="searchInput" type="text" placeholder="検索..." class="w-full bg-transparent text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none">
           <button id="btnClearSearch" type="button" class="hidden text-zinc-500 hover:text-zinc-300 text-xs">
             <i class="ph ph-x"></i>
           </button>
@@ -241,11 +240,11 @@
       </div>
 
       <!-- 新規フォルダ・新規ファイル・読込・自由視点・視点リセット・同期・3D/2D・画面非表示 -->
-      <button id="btnAddStar" type="button" title="新規フォルダ" class="flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-amber-500/40 p-1.5 font-medium text-amber-300 text-xs transition">
+      <button id="btnAddStar" type="button" title="新規フォルダ（恒星系）" class="flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-amber-500/40 p-1.5 font-medium text-amber-300 text-xs transition">
         <i class="ph ph-sun text-base"></i>
       </button>
 
-      <button id="btnOpenNewPlanetModal" type="button" title="新規ファイル" class="flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-sky-500/40 p-1.5 font-medium text-sky-300 text-xs transition">
+      <button id="btnOpenNewPlanetModal" type="button" title="新規ファイル（惑星）" class="flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-sky-500/40 p-1.5 font-medium text-sky-300 text-xs transition">
         <i class="ph ph-planet text-base"></i>
       </button>
 
@@ -339,7 +338,7 @@
     <div id="inspectorContent" class="flex-1 overflow-y-auto p-3.5 space-y-4 text-xs"></div>
   </aside>
 
-  <!-- 重ね表示されるカラータブ／ポップオーバー（右下部配置） -->
+  <!-- カラーピッカーポップオーバー -->
   <div id="colorPickerPopover" class="hidden rounded-2xl bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 shadow-2xl p-4 space-y-3.5 text-xs select-none">
     <div class="flex items-center justify-between">
       <button id="btnColorEyedropper" type="button" title="画面上の色をスポイト取得" class="rounded-lg p-1.5 text-sky-400 hover:bg-zinc-800 transition">
@@ -357,7 +356,6 @@
       <button data-color-mode="sliders" type="button" class="color-mode-btn rounded-md py-1 bg-zinc-700/90 text-zinc-100 transition">スライダ</button>
     </div>
 
-    <!-- スライダ表示 -->
     <div id="colorViewSliders" class="space-y-2.5">
       <div class="space-y-1">
         <div class="flex items-center justify-between text-[11px] text-zinc-300">
@@ -384,10 +382,8 @@
       </div>
     </div>
 
-    <!-- グリッド表示 -->
     <div id="colorViewGrid" class="hidden grid grid-cols-6 gap-1.5 py-1"></div>
 
-    <!-- スペクトラム表示 -->
     <div id="colorViewSpectrum" class="hidden space-y-2 py-1">
       <input id="colorSpectrumHue" type="range" min="0" max="360" step="1" value="38" class="w-full accent-sky-400" style="background: linear-gradient(90deg, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%); height: 14px; border-radius: 9999px;">
       <input id="colorSpectrumLight" type="range" min="15" max="85" step="1" value="52" class="w-full accent-sky-400">
@@ -587,9 +583,6 @@
     (function () {
       'use strict';
 
-      // =========================================================================
-      // 1. ストレージキー・1段階招待認証・Supabase 初期値
-      // =========================================================================
       const STORAGE_KEYS = {
         STATE: 'astral_ocean_state_v1',
         SYNC_CONFIG: 'astral_ocean_sync_config_v1',
@@ -683,9 +676,6 @@
       const DEFAULT_ZOOM_SCALE = 1.7;
       const DEFAULT_CAMERA_DISTANCE = Math.round(BASE_DISTANCE / DEFAULT_ZOOM_SCALE);
 
-      // =========================================================================
-      // 2. Null安全DOMヘルパー・ユーティリティ・太陽系初期状態・正規化
-      // =========================================================================
       const $ = (id) => {
         try {
           return document.getElementById(id) || null;
@@ -1050,9 +1040,6 @@
         }, 2600);
       }
 
-      // =========================================================================
-      // 3. ローカル保存・1段階招待認証・Supabase 同期エンジン
-      // =========================================================================
       function loadStateFromLocalStorage() {
         const fallback = createInitialState();
         try {
@@ -1180,7 +1167,6 @@
 
       function updateInviteAuthUI() {
         const authed = isInviteAuthenticated();
-
         if (!authed) {
           updateSyncStatusUI('同期オフ', 'bg-zinc-600');
         } else if (appState.syncConfig && appState.syncConfig.enabled) {
@@ -1549,9 +1535,6 @@
         closeSyncModal();
       }
 
-      // =========================================================================
-      // 4. 空間座標計算 & エンティティ検索ヘルパー
-      // =========================================================================
       function getStarById(starId) {
         return appState.data.stars.find((s) => s.id === starId) || null;
       }
@@ -1574,12 +1557,10 @@
         const tiltX = Number(planet.orbitTiltX || 0);
         const tiltZ = Number(planet.orbitTiltZ || 0);
 
-        // 真円状の公転軌道上のローカル座標（半径 r の円）
         let lx = Math.cos(angle) * r;
         let ly = 0;
         let lz = Math.sin(angle) * r;
 
-        // X軸周りの軌道傾斜角（平行以外の角度）を適用
         if (tiltX !== 0) {
           const cosX = Math.cos(tiltX);
           const sinX = Math.sin(tiltX);
@@ -1589,7 +1570,6 @@
           lz = nz;
         }
 
-        // Z軸周りの軌道傾斜角（平行以外の角度）を適用
         if (tiltZ !== 0) {
           const cosZ = Math.cos(tiltZ);
           const sinZ = Math.sin(tiltZ);
@@ -1629,9 +1609,6 @@
         }
       }
 
-      // =========================================================================
-      // 5. 3D WebGL (Three.js 幾何学多面体) & 2D Canvas ビューポートエンジン
-      // =========================================================================
       function isThreeAvailable() {
         return typeof window.THREE !== 'undefined' && Boolean(window.THREE.WebGLRenderer);
       }
@@ -1824,13 +1801,127 @@
 
       function createPlanetGeometry(planet, r) {
         if (!isThreeAvailable()) return null;
-        if (['planet-mercury', 'planet-mars'].includes(planet.id)) {
-          return new THREE.OctahedronGeometry(r, 1);
+        const seedStr = String((planet && (planet.id || planet.name)) || 'poly');
+        let seed = 2166136261 >>> 0;
+        for (let i = 0; i < seedStr.length; i++) {
+          seed ^= seedStr.charCodeAt(i);
+          seed = Math.imul(seed, 16777619) >>> 0;
         }
-        if (['planet-jupiter', 'planet-saturn', 'planet-uranus'].includes(planet.id)) {
-          return new THREE.DodecahedronGeometry(r, 1);
+        // 3角形〜12角形（sides = 3..12）の凸多面体へマッピング
+        const sides = 3 + (seed % 10);
+        const detail = Math.max(0, Math.min(2, Number(planet && planet.meshDetail) || 0));
+
+        if (sides === 3) {
+          return new THREE.TetrahedronGeometry(r * 1.12, detail);
         }
-        return new THREE.IcosahedronGeometry(r, 1);
+        if (sides === 4) {
+          return new THREE.OctahedronGeometry(r * 1.05, detail);
+        }
+        if (sides === 5) {
+          return new THREE.DodecahedronGeometry(r * 0.98, detail);
+        }
+        if (sides === 6) {
+          return new THREE.IcosahedronGeometry(r * 0.98, detail);
+        }
+
+        // 7角形〜12角形は底面/赤道が n 角形の凸双角錐（Bipyramid）を構築
+        const vertices = [];
+        const indices = [];
+        const topY = r * 1.05;
+        const bottomY = -r * 1.05;
+        const eqRadius = r * 1.04;
+
+        // 0: 頂点（北極）、1: 底点（南極）、2..(sides+1): 赤道上の凸n角形頂点
+        vertices.push(0, topY, 0);
+        vertices.push(0, bottomY, 0);
+        for (let i = 0; i < sides; i++) {
+          const theta = (i / sides) * Math.PI * 2;
+          vertices.push(
+            Math.cos(theta) * eqRadius,
+            0,
+            Math.sin(theta) * eqRadius
+          );
+        }
+
+        for (let i = 0; i < sides; i++) {
+          const curr = 2 + i;
+          const next = 2 + ((i + 1) % sides);
+          // 上半分（頂点0と赤道辺）
+          indices.push(0, next, curr);
+          // 下半分（底点1と赤道辺）
+          indices.push(1, curr, next);
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geo.setIndex(indices);
+        geo.computeVertexNormals();
+        return geo;
+      }
+
+      function buildMeshLatticeObject3D(planet, r, colorHex) {
+        const latticeGroup = new THREE.Group();
+        const basePolyGeo = createPlanetGeometry(planet, r);
+        if (!basePolyGeo) return latticeGroup;
+
+        const wireMat = new THREE.MeshBasicMaterial({
+          color: colorHex,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.72
+        });
+        const wireMesh = new THREE.Mesh(basePolyGeo, wireMat);
+        latticeGroup.add(wireMesh);
+
+        const edgesGeo = new THREE.EdgesGeometry(basePolyGeo);
+        const edgesMat = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.52
+        });
+        const edgesLines = new THREE.LineSegments(edgesGeo, edgesMat);
+        latticeGroup.add(edgesLines);
+
+        const innerGeo = createPlanetGeometry(planet, r * 0.64);
+        if (innerGeo) {
+          const innerMat = new THREE.MeshBasicMaterial({
+            color: colorHex,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.34
+          });
+          const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+          latticeGroup.add(innerMesh);
+        }
+
+        const posAttr = basePolyGeo.getAttribute('position');
+        if (posAttr && posAttr.count > 0) {
+          const seenKeys = new Set();
+          const uniqueVerts = [];
+          for (let i = 0; i < posAttr.count; i++) {
+            const vx = posAttr.getX(i);
+            const vy = posAttr.getY(i);
+            const vz = posAttr.getZ(i);
+            const key = `${vx.toFixed(2)},${vy.toFixed(2)},${vz.toFixed(2)}`;
+            if (!seenKeys.has(key)) {
+              seenKeys.add(key);
+              uniqueVerts.push(new THREE.Vector3(vx, vy, vz));
+            }
+          }
+
+          const maxNodes = Math.min(uniqueVerts.length, 48);
+          const nodeRadius = Math.max(0.07, r * 0.0425);
+          const nodeGeo = new THREE.SphereGeometry(nodeRadius, 8, 8);
+          const nodeMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+
+          for (let i = 0; i < maxNodes; i++) {
+            const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
+            nodeMesh.position.copy(uniqueVerts[i]);
+            latticeGroup.add(nodeMesh);
+          }
+        }
+
+        return latticeGroup;
       }
 
       function createGeometricSurfaceTexture(planetOrStar, isStar = false) {
@@ -1872,112 +1963,6 @@
               ctx.arc(gx, gy, gr, 0, Math.PI * 2);
               ctx.fill();
             }
-          } else {
-            const patternIndex = seed % 5;
-
-            if (patternIndex === 0) {
-              for (let i = 0; i < 1100; i++) {
-                const px = rand() * canvas.width;
-                const py = rand() * canvas.height;
-                const sz = 1.1 + rand() * 2.6;
-                const pick = rand();
-                if (pick < 0.34) {
-                  ctx.fillStyle = 'rgba(255, 255, 255, 0.54)';
-                } else if (pick < 0.7) {
-                  ctx.fillStyle = 'rgba(9, 9, 11, 0.52)';
-                } else {
-                  ctx.fillStyle = 'rgba(212, 212, 216, 0.35)';
-                }
-                ctx.fillRect(px, py, sz, sz);
-              }
-            } else if (patternIndex === 1) {
-              for (let v = 0; v < 16; v++) {
-                const startY = (v / 16) * canvas.height + (rand() - 0.5) * 18;
-                ctx.strokeStyle = v % 2 === 0
-                  ? `rgba(255, 255, 255, ${(0.2 + rand() * 0.24).toFixed(2)})`
-                  : `rgba(24, 24, 27, ${(0.18 + rand() * 0.22).toFixed(2)})`;
-                ctx.lineWidth = 1.2 + rand() * 3.4;
-                ctx.beginPath();
-                for (let x = 0; x <= canvas.width; x += 14) {
-                  const wave =
-                    Math.sin(x * 0.017 + v * 1.15) * 13 +
-                    Math.cos(x * 0.042 - v * 0.75) * 5.5;
-                  const y = startY + wave;
-                  if (x === 0) ctx.moveTo(x, y);
-                  else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
-              }
-            } else if (patternIndex === 2) {
-              const bands = 18;
-              const bandH = canvas.height / bands;
-              for (let b = 0; b < bands; b++) {
-                const y0 = b * bandH;
-                ctx.fillStyle = b % 2 === 0
-                  ? `rgba(255, 255, 255, ${(0.08 + rand() * 0.13).toFixed(2)})`
-                  : `rgba(0, 0, 0, ${(0.1 + rand() * 0.17).toFixed(2)})`;
-                ctx.beginPath();
-                ctx.moveTo(0, y0);
-                for (let x = 0; x <= canvas.width; x += 20) {
-                  const dy = Math.sin(x * 0.022 + b * 0.65) * 5;
-                  ctx.lineTo(x, y0 + dy);
-                }
-                ctx.lineTo(canvas.width, y0 + bandH);
-                for (let x = canvas.width; x >= 0; x -= 20) {
-                  const dy = Math.sin(x * 0.022 + (b + 1) * 0.65) * 5;
-                  ctx.lineTo(x, y0 + bandH + dy);
-                }
-                ctx.closePath();
-                ctx.fill();
-              }
-              for (let i = 0; i < 240; i++) {
-                ctx.fillStyle = 'rgba(9, 9, 11, 0.26)';
-                ctx.fillRect(rand() * canvas.width, rand() * canvas.height, 1.8, 1.4);
-              }
-            } else if (patternIndex === 3) {
-              const strata = 22;
-              const sH = canvas.height / strata;
-              for (let s = 0; s < strata; s++) {
-                ctx.fillStyle = s % 2 === 0
-                  ? 'rgba(255, 255, 255, 0.11)'
-                  : 'rgba(24, 24, 27, 0.12)';
-                ctx.fillRect(0, s * sH, canvas.width, sH * 0.65);
-              }
-              for (let p = 0; p < 260; p++) {
-                const px = rand() * canvas.width;
-                const py = rand() * canvas.height;
-                const rx = 3 + rand() * 9;
-                const ry = 0.8 + rand() * 2.1;
-                ctx.fillStyle = 'rgba(9, 9, 11, 0.42)';
-                ctx.beginPath();
-                ctx.ellipse(px, py, rx, ry, (rand() - 0.5) * 0.15, 0, Math.PI * 2);
-                ctx.fill();
-              }
-            } else {
-              for (let l = 0; l < 26; l++) {
-                const ly = (l / 26) * canvas.height;
-                ctx.strokeStyle = 'rgba(9, 9, 11, 0.34)';
-                ctx.lineWidth = 0.9 + rand() * 1.4;
-                ctx.beginPath();
-                ctx.moveTo(0, ly);
-                ctx.lineTo(canvas.width, ly + (rand() - 0.5) * 14);
-                ctx.stroke();
-              }
-              for (let c = 0; c < 18; c++) {
-                let x = rand() * canvas.width;
-                let y = rand() * canvas.height;
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.24)';
-                ctx.lineWidth = 1.1;
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                for (let s = 0; s < 5; s++) {
-                  x += (rand() - 0.5) * 34;
-                  y += (rand() - 0.5) * 26;
-                  ctx.lineTo(x, y);
-                }
-                ctx.stroke();
-              }
-            }
           }
 
           const tex = new THREE.CanvasTexture(canvas);
@@ -1995,13 +1980,17 @@
 
         const disposeObject3D = (obj) => {
           if (!obj) return;
+          const disposedGeometries = new Set();
+          const disposedMaterials = new Set();
           obj.traverse((child) => {
-            if (child.geometry && typeof child.geometry.dispose === 'function') {
+            if (child.geometry && typeof child.geometry.dispose === 'function' && !disposedGeometries.has(child.geometry)) {
+              disposedGeometries.add(child.geometry);
               child.geometry.dispose();
             }
             const mats = Array.isArray(child.material) ? child.material : [child.material];
             mats.forEach((mat) => {
-              if (!mat) return;
+              if (!mat || disposedMaterials.has(mat)) return;
+              disposedMaterials.add(mat);
               if (mat.map && typeof mat.map.dispose === 'function') {
                 mat.map.dispose();
               }
@@ -2037,9 +2026,7 @@
           const group = new THREE.Group();
           const r = Number(star.radius || 14);
           const colorHex = new THREE.Color(star.color || '#f59e0b');
-          const starTex = createGeometricSurfaceTexture(star, true);
 
-          // 公転軌道面の法線ベクトル（＝公転軸）に合わせて自転軸グループを傾ける
           const spinAxisGroup = new THREE.Group();
           const childPlanets = getPlanetsForStar(star.id);
           let sumTiltX = 0;
@@ -2061,20 +2048,71 @@
           spinAxisGroup.rotation.z = avgTiltZ;
           group.add(spinAxisGroup);
 
-          const coreGeo = new THREE.SphereGeometry(r, 48, 32);
-          const coreMat = new THREE.MeshBasicMaterial({
-            color: starTex ? 0xffffff : colorHex,
-            map: starTex || null
-          });
+          // クリック判定用の透明コア球体
+          const coreGeo = new THREE.SphereGeometry(r * 1.05, 24, 18);
+          const coreMat = new THREE.MeshBasicMaterial({ visible: false });
           const core = new THREE.Mesh(coreGeo, coreMat);
           core.userData = { kind: 'star', id: star.id };
           spinAxisGroup.add(core);
 
-          const haloGeo = new THREE.SphereGeometry(r * 1.24, 32, 24);
+          // 網目状球体（緯度経度ワイヤーフレーム＋内層メッシュ＋頂点ノード）
+          const meshSphereGroup = new THREE.Group();
+          const outerWireGeo = new THREE.SphereGeometry(r, 24, 16);
+          const outerWireMat = new THREE.MeshBasicMaterial({
+            color: colorHex,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.85
+          });
+          const outerWireMesh = new THREE.Mesh(outerWireGeo, outerWireMat);
+          outerWireMesh.userData = { kind: 'star', id: star.id };
+          meshSphereGroup.add(outerWireMesh);
+
+          const edgesGeo = new THREE.EdgesGeometry(new THREE.SphereGeometry(r * 1.005, 16, 12));
+          const edgesMat = new THREE.LineBasicMaterial({
+            color: 0xfef08a,
+            transparent: true,
+            opacity: 0.45
+          });
+          meshSphereGroup.add(new THREE.LineSegments(edgesGeo, edgesMat));
+
+          const innerWireGeo = new THREE.SphereGeometry(r * 0.66, 14, 10);
+          const innerWireMat = new THREE.MeshBasicMaterial({
+            color: colorHex,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.36
+          });
+          const innerWireMesh = new THREE.Mesh(innerWireGeo, innerWireMat);
+          meshSphereGroup.add(innerWireMesh);
+
+          const nodeGeo = new THREE.SphereGeometry(Math.max(0.12, r * 0.0225), 8, 8);
+          const nodeMat = new THREE.MeshBasicMaterial({ color: 0xfffbeb });
+          const ringCount = 6;
+          const perRing = 12;
+          for (let i = 1; i < ringCount; i++) {
+            const phiNode = (i / ringCount) * Math.PI;
+            const sinP = Math.sin(phiNode);
+            const cosP = Math.cos(phiNode);
+            for (let j = 0; j < perRing; j++) {
+              const thetaNode = (j / perRing) * Math.PI * 2;
+              const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
+              nodeMesh.position.set(
+                r * sinP * Math.cos(thetaNode),
+                r * cosP,
+                r * sinP * Math.sin(thetaNode)
+              );
+              meshSphereGroup.add(nodeMesh);
+            }
+          }
+          spinAxisGroup.add(meshSphereGroup);
+
+          const haloGeo = new THREE.SphereGeometry(r * 1.24, 20, 14);
           const haloMat = new THREE.MeshBasicMaterial({
             color: colorHex,
+            wireframe: true,
             transparent: true,
-            opacity: 0.18,
+            opacity: 0.16,
             depthWrite: false
           });
           const halo = new THREE.Mesh(haloGeo, haloMat);
@@ -2084,8 +2122,9 @@
           const outerAuraMat = new THREE.MeshBasicMaterial({
             color: 0xfef08a,
             side: THREE.DoubleSide,
+            wireframe: true,
             transparent: true,
-            opacity: 0.35
+            opacity: 0.42
           });
           const outerAura = new THREE.Mesh(outerAuraGeo, outerAuraMat);
           outerAura.rotation.x = Math.PI / 2;
@@ -2095,8 +2134,9 @@
           const ringMat = new THREE.MeshBasicMaterial({
             color: 0x38bdf8,
             side: THREE.DoubleSide,
+            wireframe: true,
             transparent: true,
-            opacity: 0.9
+            opacity: 0.92
           });
           const ring = new THREE.Mesh(ringGeo, ringMat);
           ring.rotation.x = Math.PI / 2;
@@ -2106,7 +2146,7 @@
           const pos = star.position || { x: 0, y: 0, z: 0 };
           group.position.set(pos.x || 0, pos.y || 0, pos.z || 0);
           viewport.scene.add(group);
-          viewport.starMeshes.set(star.id, { group, spinAxisGroup, core, halo, ring });
+          viewport.starMeshes.set(star.id, { group, spinAxisGroup, core, meshSphereGroup, innerWireMesh, halo, ring });
         });
 
         appState.data.planets.forEach((planet) => {
@@ -2115,25 +2155,22 @@
           const r = Number(planet.radius || 3.8);
           const orbitR = Number(planet.orbitRadius || 40);
           const colorHex = new THREE.Color(planet.color || '#38bdf8');
-          const surfaceTex = createGeometricSurfaceTexture(planet, false);
 
           const group = new THREE.Group();
-          const bodyGeo = createPlanetGeometry(planet, r);
-          const bodyMat = new THREE.MeshStandardMaterial({
-            color: surfaceTex ? 0xffffff : colorHex,
-            map: surfaceTex || null,
-            roughness: 0.78,
-            metalness: 0.12,
-            flatShading: false
-          });
-          const body = new THREE.Mesh(bodyGeo, bodyMat);
+          const hitGeo = new THREE.SphereGeometry(r * 1.15, 16, 12);
+          const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+          const body = new THREE.Mesh(hitGeo, hitMat);
           body.userData = { kind: 'planet', id: planet.id };
           group.add(body);
+
+          const latticeGroup = buildMeshLatticeObject3D(planet, r, colorHex);
+          group.add(latticeGroup);
 
           const selGeo = new THREE.RingGeometry(r * 1.38, r * 1.54, 48);
           const selMat = new THREE.MeshBasicMaterial({
             color: 0x38bdf8,
             side: THREE.DoubleSide,
+            wireframe: true,
             transparent: true,
             opacity: 0.95
           });
@@ -2142,11 +2179,12 @@
           selRing.visible = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
           group.add(selRing);
 
-          if (planet.id === 'planet-saturn') {
+          if (planet.id === 'planet-saturn' || Boolean(planet.hasRing)) {
             const saturnRingGeo = new THREE.RingGeometry(r * 1.32, r * 2.25, 48);
             const saturnRingMat = new THREE.MeshBasicMaterial({
-              color: 0xfde047,
+              color: planet.id === 'planet-saturn' ? 0xfde047 : colorHex,
               side: THREE.DoubleSide,
+              wireframe: true,
               transparent: true,
               opacity: 0.78,
               depthWrite: false
@@ -2204,7 +2242,7 @@
           viewport.scene.add(orbitLine);
           viewport.scene.add(group);
 
-          viewport.planetMeshes.set(planet.id, { group, body, selRing, orbitLine });
+          viewport.planetMeshes.set(planet.id, { group, body, latticeGroup, selRing, orbitLine });
         });
       }
 
@@ -2228,7 +2266,6 @@
             viewport.sunLight.position.set(pos.x || 0, pos.y || 0, pos.z || 0);
           }
 
-          // 所属惑星の公転軌道傾斜角に合わせて恒星の自転軸（ローカルY軸）を同期
           const childPlanets = getPlanetsForStar(star.id);
           let sumTiltX = 0;
           let sumTiltZ = 0;
@@ -2250,8 +2287,14 @@
             entry.spinAxisGroup.rotation.z = targetTiltZ;
           }
 
-          // 公転軌道軸（spinAxisGroupのローカルY軸）を中心に自転
           entry.core.rotation.y += dt * 0.35;
+          if (entry.meshSphereGroup) {
+            entry.meshSphereGroup.rotation.y += dt * 0.32;
+          }
+          if (entry.innerWireMesh) {
+            entry.innerWireMesh.rotation.x -= dt * 0.45;
+            entry.innerWireMesh.rotation.z += dt * 0.25;
+          }
           entry.halo.rotation.y -= dt * 0.22;
           entry.halo.rotation.x += dt * 0.14;
           const isSel = appState.data.selectedKind === 'star' && appState.data.selectedId === star.id;
@@ -2264,8 +2307,10 @@
           if (!entry) return;
           const pos = getPlanetWorldPosition(planet, viewport.elapsedOrbitTime);
           entry.group.position.set(pos.x, pos.y, pos.z);
-          entry.body.rotation.y += dt * 0.9;
-          entry.body.rotation.x += dt * 0.35;
+          if (entry.latticeGroup) {
+            entry.latticeGroup.rotation.y += dt * 0.9;
+            entry.latticeGroup.rotation.x += dt * 0.35;
+          }
           const isSel = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
           entry.selRing.visible = isSel;
           if (isSel) entry.selRing.rotation.z += dt * 1.2;
@@ -2369,37 +2414,44 @@
           const sc = toScreen(pos.x || 0, pos.z || 0);
           const rPx = Math.max(13, Number(star.radius || 14) * zoomScale * 0.95);
           const isSel = appState.data.selectedKind === 'star' && appState.data.selectedId === star.id;
+          const starColor = star.color || '#f59e0b';
 
-          const glowGrad = ctx.createRadialGradient(sc.x, sc.y, rPx * 0.2, sc.x, sc.y, rPx * 1.65);
-          glowGrad.addColorStop(0, star.color || '#f59e0b');
-          glowGrad.addColorStop(0.65, 'rgba(245, 158, 11, 0.28)');
+          const glowGrad = ctx.createRadialGradient(sc.x, sc.y, rPx * 0.15, sc.x, sc.y, rPx * 1.55);
+          glowGrad.addColorStop(0, starColor);
+          glowGrad.addColorStop(0.6, 'rgba(245, 158, 11, 0.22)');
           glowGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
           ctx.fillStyle = glowGrad;
           ctx.beginPath();
-          ctx.arc(sc.x, sc.y, rPx * 1.65, 0, Math.PI * 2);
+          ctx.arc(sc.x, sc.y, rPx * 1.55, 0, Math.PI * 2);
           ctx.fill();
 
-          const sphereGrad = ctx.createRadialGradient(
-            sc.x - rPx * 0.32,
-            sc.y - rPx * 0.32,
-            rPx * 0.1,
-            sc.x,
-            sc.y,
-            rPx
-          );
-          sphereGrad.addColorStop(0, '#fffbeb');
-          sphereGrad.addColorStop(0.45, star.color || '#f59e0b');
-          sphereGrad.addColorStop(1, '#92400e');
-          ctx.fillStyle = sphereGrad;
+          // 2D表示でも網目状の球体（経線・緯線メッシュ）を描画
+          ctx.strokeStyle = starColor;
+          ctx.lineWidth = 1.4;
           ctx.beginPath();
           ctx.arc(sc.x, sc.y, rPx, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.stroke();
 
-          if (isSel) {
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(254, 240, 138, 0.45)';
+          ctx.lineWidth = 0.9;
+          const latCount = 4;
+          for (let i = 1; i < latCount; i++) {
+            const vRatio = (i / latCount) * 2 - 1;
+            const latY = sc.y + vRatio * rPx;
+            const latHalfW = Math.sqrt(Math.max(0, rPx * rPx - (vRatio * rPx) * (vRatio * rPx)));
             ctx.beginPath();
-            ctx.arc(sc.x, sc.y, rPx + 6, 0, Math.PI * 2);
+            ctx.moveTo(sc.x - latHalfW, latY);
+            ctx.lineTo(sc.x + latHalfW, latY);
+            ctx.stroke();
+          }
+
+          const lonCount = 6;
+          const rotPhase = viewport.elapsedOrbitTime * 0.45;
+          for (let j = 0; j < lonCount; j++) {
+            const lonAngle = rotPhase + (j / lonCount) * Math.PI;
+            const rx = Math.max(1.2, Math.abs(Math.cos(lonAngle)) * rPx);
+            ctx.beginPath();
+            ctx.ellipse(sc.x, sc.y, rx, rPx, 0, 0, Math.PI * 2);
             ctx.stroke();
           }
 
@@ -2422,53 +2474,45 @@
           const sc = toScreen(pos.x, pos.z);
           const rPx = Math.max(6, Number(planet.radius || 3.8) * zoomScale * 1.15);
           const isSel = appState.data.selectedKind === 'planet' && appState.data.selectedId === planet.id;
-          const sides = ['planet-mercury', 'planet-mars'].includes(planet.id) ? 4 : ['planet-jupiter', 'planet-saturn', 'planet-uranus'].includes(planet.id) ? 6 : 5;
+          // 惑星ID/名前から 3角形〜12角形（sides = 3..12）を決定
+          const seedStr = String((planet && (planet.id || planet.name)) || 'poly');
+          let h = 2166136261 >>> 0;
+          for (let k = 0; k < seedStr.length; k++) {
+            h ^= seedStr.charCodeAt(k);
+            h = Math.imul(h, 16777619) >>> 0;
+          }
+          const sides = 3 + (h % 10);
 
-          if (planet.id === 'planet-saturn') {
+          if (planet.id === 'planet-saturn' || Boolean(planet.hasRing)) {
             ctx.save();
             ctx.translate(sc.x, sc.y);
             ctx.rotate(-0.28);
-            ctx.strokeStyle = 'rgba(253, 224, 71, 0.75)';
-            ctx.lineWidth = Math.max(1.8, rPx * 0.28);
-            ctx.beginPath();
-            ctx.ellipse(0, 0, rPx * 1.95, rPx * 0.58, 0, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.strokeStyle = planet.id === 'planet-saturn' ? 'rgba(253, 224, 71, 0.75)' : (planet.color || '#38bdf8');
+            ctx.lineWidth = Math.max(1.2, rPx * 0.16);
+            const ringSegs = 24;
+            for (let s = 0; s < ringSegs; s++) {
+              const a0 = (s / ringSegs) * Math.PI * 2;
+              const a1 = ((s + 0.65) / ringSegs) * Math.PI * 2;
+              ctx.beginPath();
+              ctx.ellipse(0, 0, rPx * 1.95, rPx * 0.58, 0, a0, a1);
+              ctx.stroke();
+
+              const midA = (a0 + a1) * 0.5;
+              ctx.beginPath();
+              ctx.moveTo(Math.cos(midA) * rPx * 1.32, Math.sin(midA) * rPx * 0.38);
+              ctx.lineTo(Math.cos(midA) * rPx * 1.95, Math.sin(midA) * rPx * 0.58);
+              ctx.stroke();
+            }
             ctx.restore();
           }
 
-          ctx.save();
           drawPolygonPath(ctx, sc.x, sc.y, rPx, sides, viewport.elapsedOrbitTime * 0.35);
-          ctx.fillStyle = planet.color || '#38bdf8';
-          ctx.fill();
-          ctx.clip();
+          ctx.strokeStyle = planet.color || '#38bdf8';
+          ctx.lineWidth = 1.6;
+          ctx.stroke();
 
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.26)';
-          ctx.lineWidth = Math.max(1, rPx * 0.14);
-          for (let lineOffset = -rPx; lineOffset <= rPx; lineOffset += Math.max(3, rPx * 0.5)) {
-            ctx.beginPath();
-            ctx.moveTo(sc.x - rPx * 1.2, sc.y + lineOffset);
-            ctx.quadraticCurveTo(
-              sc.x,
-              sc.y + lineOffset + Math.sin(viewport.elapsedOrbitTime + lineOffset) * rPx * 0.24,
-              sc.x + rPx * 1.2,
-              sc.y + lineOffset
-            );
-            ctx.stroke();
-          }
-
-          ctx.fillStyle = 'rgba(9, 9, 11, 0.36)';
-          const dotStep = Math.max(4, rPx * 0.55);
-          for (let dx = -rPx * 0.7; dx <= rPx * 0.7; dx += dotStep) {
-            for (let dy = -rPx * 0.7; dy <= rPx * 0.7; dy += dotStep) {
-              if (((Math.round(dx * 10 + dy * 17)) & 1) === 0) {
-                ctx.fillRect(sc.x + dx, sc.y + dy, Math.max(1.2, rPx * 0.14), Math.max(1.2, rPx * 0.12));
-              }
-            }
-          }
-          ctx.restore();
-
-          drawPolygonPath(ctx, sc.x, sc.y, rPx, sides, viewport.elapsedOrbitTime * 0.35);
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+          drawPolygonPath(ctx, sc.x, sc.y, rPx * 0.62, sides, -viewport.elapsedOrbitTime * 0.5);
+          ctx.strokeStyle = 'rgba(248, 250, 252, 0.5)';
           ctx.lineWidth = 1;
           ctx.stroke();
 
@@ -2477,6 +2521,17 @@
             ctx.strokeStyle = '#38bdf8';
             ctx.lineWidth = 2;
             ctx.stroke();
+
+            const selRingSegs = 16;
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+            ctx.lineWidth = 1;
+            for (let g = 0; g < selRingSegs; g++) {
+              const ga = viewport.elapsedOrbitTime * 0.8 + (g / selRingSegs) * Math.PI * 2;
+              ctx.beginPath();
+              ctx.moveTo(sc.x + Math.cos(ga) * (rPx * 1.15), sc.y + Math.sin(ga) * (rPx * 1.15));
+              ctx.lineTo(sc.x + Math.cos(ga) * (rPx * 1.45), sc.y + Math.sin(ga) * (rPx * 1.45));
+              ctx.stroke();
+            }
           }
 
           ctx.fillStyle = '#e4e4e7';
@@ -2543,9 +2598,6 @@
         }
       }
 
-      // =========================================================================
-      // 6. ビューポート操作（回転・パン・ズーム・クリック選択＆ダブルクリック開く）
-      // =========================================================================
       function setCameraDistance(dist, persist = true) {
         const clamped = Math.min(1800, Math.max(25, Number(dist) || DEFAULT_CAMERA_DISTANCE));
         viewport.cameraSpherical.radius = clamped;
@@ -2620,8 +2672,12 @@
         viewport.raycaster.setFromCamera(viewport.pointerNDC, viewport.camera);
 
         const candidates = [];
-        viewport.planetMeshes.forEach((entry) => candidates.push(entry.body));
-        viewport.starMeshes.forEach((entry) => candidates.push(entry.core));
+        viewport.planetMeshes.forEach((entry) => {
+          if (entry && entry.body) candidates.push(entry.body);
+        });
+        viewport.starMeshes.forEach((entry) => {
+          if (entry && entry.core) candidates.push(entry.core);
+        });
 
         const hits = viewport.raycaster.intersectObjects(candidates, false);
         if (hits.length > 0 && hits[0].object && hits[0].object.userData) {
@@ -2706,9 +2762,6 @@
         onEl(container, 'contextmenu', (e) => e.preventDefault());
       }
 
-      // =========================================================================
-      // 7. 星系エクスプローラー描画 & ドラッグ移籍 & 恒星タブ開閉
-      // =========================================================================
       function getTypeBadge(type) {
         if (type === 'image') {
           return { icon: 'ph-image', color: 'text-pink-400', label: '画像' };
@@ -2972,9 +3025,6 @@
         }
       }
 
-      // =========================================================================
-      // 8. 太陽系排他ガード & インスペクター描画
-      // =========================================================================
       function getSolarSystemOuterBoundary() {
         const sun = getStarById('star-sun') || appState.data.stars[0];
         const sunPlanets = sun ? getPlanetsForStar(sun.id) : [];
@@ -3011,7 +3061,6 @@
             z = Math.round((sunPos.z || 0) + Math.sin(angle) * minSolarDist * cosEl);
             adjusted = true;
           }
-          // 太陽系以外の恒星は太陽系の基準平面（Y = sunPos.y）と同一平面にならないようYオフセットを確保
           if (Math.abs(y - (sunPos.y || 0)) < 55) {
             const signY = y >= (sunPos.y || 0) ? 1 : -1;
             y = Math.round((sunPos.y || 0) + signY * (75 + ((appState.data.stars.length % 3) * 35)));
@@ -3056,7 +3105,6 @@
         for (let attempt = 0; attempt < 48; attempt++) {
           const ring = Math.floor(attempt / 8);
           const angle = idx * 1.35 + attempt * 0.78;
-          // 太陽系基準平面（Y=0）から上下に大きく傾斜した立体角（仰角 ±24°〜±58°）で配置
           const signY = ((idx + attempt) % 2 === 0) ? 1 : -1;
           const elevationDeg = 24 + ((idx * 13 + attempt * 11) % 35);
           const elevationRad = signY * (elevationDeg * Math.PI) / 180;
@@ -3348,9 +3396,6 @@
         }
       }
 
-      // =========================================================================
-      // 8.5 右下部重ね表示カラータブ（RGBスライダ・グリッド・スペクトラム・HEX）
-      // =========================================================================
       const colorPopoverState = {
         open: false,
         mode: 'sliders',
@@ -3520,9 +3565,6 @@
         }
       }
 
-      // =========================================================================
-      // 9. 新規惑星作成・ローカルファイル読込・ブラックホール消去・検索
-      // =========================================================================
       function openBlackHoleModal(kind, id) {
         if (kind === 'planet') {
           const planet = getPlanetById(id);
@@ -3668,7 +3710,6 @@
         const isSun = starId === 'star-sun';
         const signX = Math.random() < 0.5 ? -1 : 1;
         const signZ = Math.random() < 0.5 ? -1 : 1;
-        // 太陽系の基準軌道平面（水平面）に対して平行にならない傾斜角（18°〜68°）を生成
         const degX = isSun ? (16 + Math.random() * 34) : (24 + Math.random() * 46);
         const degZ = isSun ? (10 + Math.random() * 28) : (18 + Math.random() * 44);
         return {
@@ -3678,20 +3719,59 @@
         };
       }
 
+      // 黒背景の空間で視認しやすい高彩度〜明度のランダムカラー（16進数6桁）を生成
+      function generateRandomPlanetColor() {
+        const hue = Math.floor(Math.random() * 360);
+        const sat = (74 + Math.random() * 22) / 100;
+        const light = (54 + Math.random() * 18) / 100;
+
+        const c = (1 - Math.abs(2 * light - 1)) * sat;
+        const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+        const m = light - c / 2;
+
+        let r1 = 0;
+        let g1 = 0;
+        let b1 = 0;
+        if (hue < 60) {
+          r1 = c;
+          g1 = x;
+        } else if (hue < 120) {
+          r1 = x;
+          g1 = c;
+        } else if (hue < 180) {
+          g1 = c;
+          b1 = x;
+        } else if (hue < 240) {
+          g1 = x;
+          b1 = c;
+        } else if (hue < 300) {
+          r1 = x;
+          b1 = c;
+        } else {
+          r1 = c;
+          b1 = x;
+        }
+
+        return rgbToHex((r1 + m) * 255, (g1 + m) * 255, (b1 + m) * 255);
+      }
+
       function createPlanetRecord({ name, starId, type, radius, orbitRadius, imageUrl, contentHtml }) {
         pushUndoCheckpoint();
         const star = getStarById(starId) || appState.data.stars[0];
         const targetStarId = star ? star.id : 'star-sun';
         const normalizedType = type === 'image' ? 'image' : 'document';
-        const defaultColor = normalizedType === 'image' ? '#f472b6' : '#38bdf8';
+        const randomColor = generateRandomPlanetColor();
         const safeName = String(name || '').trim() || (normalizedType === 'image' ? '新規画像.png' : '新規メモ.md');
         const orbitAngles = generateNonParallelOrbitAngles(targetStarId);
+        // 25% の確率で網目状の惑星リングを生成
+        const hasRing = Math.random() < 0.25;
         const planet = {
           id: `planet-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           starId: targetStarId,
           name: safeName,
           type: normalizedType,
-          color: defaultColor,
+          color: randomColor,
+          hasRing,
           radius: Number(radius) || 3.8,
           orbitRadius: Number(orbitRadius) || 48,
           orbitSpeed: 0.24,
@@ -3700,7 +3780,7 @@
           orbitTiltX: orbitAngles.orbitTiltX,
           orbitTiltZ: orbitAngles.orbitTiltZ,
           contentHtml: normalizedType === 'document' ? (contentHtml || `<h1>${escapeHtml(safeName)}</h1><p>新しい幾何学惑星ドキュメントです。</p>`) : '',
-          imageUrl: normalizedType === 'image' ? (imageUrl || createDefaultSampleImageDataUrl(safeName, '#09090b', defaultColor)) : '',
+          imageUrl: normalizedType === 'image' ? (imageUrl || createDefaultSampleImageDataUrl(safeName, '#09090b', randomColor)) : '',
           updatedAt: Date.now()
         };
         appState.data.planets.push(planet);
@@ -3807,9 +3887,6 @@
         dd.classList.remove('hidden');
       }
 
-      // =========================================================================
-      // 10. ドキュメントエディタ & 画像ビューア
-      // =========================================================================
       function openDocEditor(planetId) {
         const planet = getPlanetById(planetId);
         if (!planet) return;
@@ -3875,9 +3952,6 @@
         setModalVisibility(els.astralImageViewerModal, false);
       }
 
-      // =========================================================================
-      // 11. 全体UI同期・HUD表示切替・イベントバインディング
-      // =========================================================================
       function syncOrbitControlsUI() {
         if (els.pauseOrbitIcon) {
           els.pauseOrbitIcon.className = appState.data.orbitPaused ? 'ph-fill ph-play text-sm text-amber-300' : 'ph ph-pause text-sm';
@@ -4353,9 +4427,6 @@
         });
       }
 
-      // =========================================================================
-      // 12. アプリケーション起動
-      // =========================================================================
       function bootAstralOcean() {
         reconcileSelection();
         bindAllEvents();
